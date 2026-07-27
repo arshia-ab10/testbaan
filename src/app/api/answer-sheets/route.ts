@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export async function POST(request: Request) {
   try {
-    // اصلاح شد: اضافه شدن as any
     const body = (await request.json()) as any;
     const { 
       book_id, custom_id, title, type, 
@@ -14,7 +14,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'اطلاعات ضروری پاسخ‌برگ ناقص است' }, { status: 400 });
     }
 
-    const db = (process.env.testbaan_db || (globalThis as any).testbaan_db) as any;
+    // دسترسی استاندارد به دیتابیس در OpenNext
+    const { env } = await getCloudflareContext();
+    const db = (env as any).testbaan_db;
+
+    if (!db) {
+      return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
+    }
 
     const id = crypto.randomUUID();
     const keysJson = JSON.stringify(correct_keys);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 // ۱. ثبت کتاب یا آزمون جدید (POST)
 export async function POST(request: Request) {
@@ -10,7 +11,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'شناسه اختصاصی و عنوان کتاب الزامی است' }, { status: 400 });
     }
 
-    const db = (process.env.testbaan_db || (globalThis as any).testbaan_db) as any;
+    // دسترسی استاندارد به دیتابیس در OpenNext
+    const { env } = await getCloudflareContext();
+    const db = (env as any).testbaan_db;
     
     if (!db) {
       return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
@@ -35,7 +38,9 @@ export async function POST(request: Request) {
 // ۲. دریافت لیست کتاب‌ها (GET)
 export async function GET() {
   try {
-    const db = (process.env.testbaan_db || (globalThis as any).testbaan_db) as any;
+    // دسترسی استاندارد به دیتابیس در OpenNext
+    const { env } = await getCloudflareContext();
+    const db = (env as any).testbaan_db;
     
     if (!db) {
       return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
