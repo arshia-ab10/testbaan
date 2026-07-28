@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export async function GET(request: Request) {
@@ -34,26 +35,25 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getAuthUser();
+    if (!user || user.role !== 'admin') return NextResponse.json({ error: 'غیرمجاز' }, { status: 403 });
+
     const body = (await request.json()) as any;
     const { book_id, title, type, duration_minutes, start_question_number, total_questions, correct_keys } = body;
 
     if (!book_id || !title || !total_questions || !correct_keys) {
-      return NextResponse.json({ error: 'اطلاعات ضروری ناقص است' }, { status: 400 });
+      return NextResponse.json({ error: 'اطلاعات ناقص است' }, { status: 400 });
     }
 
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
-    if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    // تمام آیدی‌ها ۱۰ رقمی تصادفی
     const random10Digit = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    const id = random10Digit;
-    const custom_id = random10Digit;
     const keysJson = JSON.stringify(correct_keys);
 
     await db.prepare(
       `INSERT INTO answer_sheets (id, book_id, custom_id, title, type, duration_minutes, start_question_number, total_questions, correct_keys) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, book_id, custom_id, title, type || 'practice', duration_minutes || null, start_question_number || 1, total_questions, keysJson).run();
+    ).bind(random10Digit, book_id, random10Digit, title, type || 'practice', duration_minutes || null, start_question_number || 1, total_questions, keysJson).run();
 
     return NextResponse.json({ message: 'پاسخ‌برگ ساخته شد' }, { status: 201 });
   } catch (error: any) {
@@ -61,16 +61,42 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+// ویرایش پاسخ‌برگ موجود توسط ادمین
+export async function PUT(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const user = await getAuthUser();
+    if (!user || user.role !== 'admin') return NextResponse.json({ error: 'غیرمجاز' }, { status: 403 });
 
-    if (!id) return NextResponse.json({ error: 'شناسه ارسال نشده است' }, { status: 400 });
+    const body = (await request.json()) as any;
+    const { id, title, type, duration_minutes, start_question_number, total_questions, correct_keys } = body;
+
+    if (!id || !title || !total_questions || !correct_keys) {
+      return NextResponse.json({ error: 'اطلاعات ناقص است' }, { status: 400 });
+    }
 
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
-    if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
+    const keysJson = JSON.stringify(correct_keys);
+
+    await db.prepare(
+      `UPDATE answer_sheets SET title = ?, type = ?, duration_minutes = ?, start_question_number = ?, total_questions = ?, correct_keys = ? WHERE id = ?`
+    ).bind(title, type || 'practice', duration_minutes || null, start_question_number || 1, total_questions, keysJson, id).run();
+
+    return NextResponse.json({ message: 'پاسخ‌برگ ویرایش شد' }, { status: 200 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getAuthUser();
+    if (!user || user.role !== 'admin') return NextResponse.json({ error: 'غیرمجاز' }, { status: 403 });
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const { env } = await getCloudflareContext();
+    const db = (env as any).testbaan_db;
 
     await db.prepare('DELETE FROM answer_sheets WHERE id = ?').bind(id).run();
     return NextResponse.json({ message: 'پاسخ‌برگ حذف شد' }, { status: 200 });
