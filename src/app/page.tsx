@@ -5,8 +5,6 @@ export default async function Home({ searchParams }: { searchParams: any }) {
   const cookieStore = await cookies();
   const session = cookieStore.get("user_session");
   const user = session ? JSON.parse(session.value) : null;
-  
-  // دریافت ارور از آدرس سایت (در صورت وجود)
   const error = searchParams?.error;
 
   return (
@@ -15,7 +13,6 @@ export default async function Home({ searchParams }: { searchParams: any }) {
         <h1 className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-3">تست‌بان</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-8">سامانه آنلاین برگزاری آزمون و پاسخ‌برگ الکترونیکی</p>
 
-        {/* نمایش کادر خطا در صورت وجود مشکل در ورود */}
         {error && (
           <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-xl text-sm font-bold border border-red-200">
             خطا در ورود: {error}
@@ -27,7 +24,7 @@ export default async function Home({ searchParams }: { searchParams: any }) {
             <div className="p-4 bg-green-50 dark:bg-gray-700 rounded-2xl">
               <p className="text-sm text-gray-500 dark:text-gray-300">خوش آمدید،</p>
               <p className="font-bold text-lg text-green-700 dark:text-green-300">
-                {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}` : user.name}
+                {user.first_name || user.last_name ? `${user.first_name} ${user.last_name}` : 'کاربر عزیز'}
               </p>
               <p className="text-xs text-gray-400 mt-1 font-mono">{user.email}</p>
             </div>
@@ -35,6 +32,13 @@ export default async function Home({ searchParams }: { searchParams: any }) {
             <Link href="/dashboard" className="block w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-bold transition shadow-lg">
               ورود به داشبورد آزمون‌ها ←
             </Link>
+
+            {/* دکمه مخصوص ادمین */}
+            {user.role === 'admin' && (
+              <Link href="/admin" className="block w-full bg-gray-800 hover:bg-gray-900 text-white p-3.5 rounded-xl font-bold transition shadow-lg">
+                ورود به پنل مدیریت ⚙️
+              </Link>
+            )}
 
             <a href="/api/auth/logout" className="block text-xs text-red-500 hover:underline pt-2">
               خروج از حساب کاربری

@@ -34,8 +34,7 @@ export async function GET(request: Request) {
     });
 
     const googleUser = (await userResponse.json()) as any;
-    // دریافت نام و نام خانوادگی به صورت مجزا از گوگل
-    const { email, name, given_name, family_name } = googleUser;
+    const { email, given_name, family_name } = googleUser;
 
     if (!email) return NextResponse.redirect(`${baseUrl}/?error=no_email`);
 
@@ -55,19 +54,20 @@ export async function GET(request: Request) {
         firstName = existingUser.first_name || firstName;
         lastName = existingUser.last_name || lastName;
         
-        // آپدیت نام و فامیل اگر قبلا ثبت نشده بود
         if (!existingUser.first_name) {
           await db.prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?').bind(firstName, lastName, userId).run();
         }
       } else {
         userId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-        await db.prepare('INSERT INTO users (id, email, name, first_name, last_name, role) VALUES (?, ?, ?, ?, ?, ?)')
-          .bind(userId, email, name || 'کاربر جدید', firstName, lastName, 'user').run();
+        // ستون name حذف شد
+        await db.prepare('INSERT INTO users (id, email, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)')
+          .bind(userId, email, firstName, lastName, 'user').run();
       }
     }
 
     const cookieStore = await cookies();
-    const sessionData = JSON.stringify({ id: userId, email, name, first_name: firstName, last_name: lastName, role: userRole });
+    // ستون name از سشن هم حذف شد
+    const sessionData = JSON.stringify({ id: userId, email, first_name: firstName, last_name: lastName, role: userRole });
     cookieStore.set('user_session', sessionData, {
       httpOnly: true, secure: true, path: '/', maxAge: 60 * 60 * 24 * 7,
     });

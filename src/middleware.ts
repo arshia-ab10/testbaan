@@ -4,13 +4,20 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // اگر کاربر خواست وارد صفحات ادمین شود ولی در صفحه لاگین نبود
-  if (path.startsWith('/admin') && !path.startsWith('/admin/login')) {
-    const token = request.cookies.get('admin_token');
+  if (path.startsWith('/admin')) {
+    const sessionCookie = request.cookies.get('user_session');
     
-    // اگر کوکی لاگین نداشت، پرتش کن به صفحه لاگین
-    if (!token) {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    try {
+      const user = JSON.parse(sessionCookie.value);
+      if (user.role !== 'admin') {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    } catch (e) {
+      return NextResponse.redirect(new URL('/', request.url));
     }
   }
   
@@ -18,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'], // فقط روی مسیرهای ادمین حساس باش
+  matcher: ['/admin/:path*'],
 };
