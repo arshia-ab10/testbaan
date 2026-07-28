@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { toFaNum } from "@/lib/utils";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("exams");
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
     setUserPermissions(prev => prev.includes(sheetId) ? prev.filter(id => id !== sheetId) : [...prev, sheetId]);
   };
 
-  // الگوریتم چیدمان ستونی کنکوری برای ادمین
+  // چیدمان ۱۰تایی ستونی کلیدهای ادمین
   const adminBlocks: number[][] = [];
   for (let i = 0; i < totalQuestions; i += 10) {
     const chunk = [];
@@ -202,19 +203,21 @@ export default function AdminDashboard() {
                       <input type="text" placeholder="مثلا: 12341234..." className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-xs font-mono" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* شبکه کلیدهای ادمین با الگوریتم ستونی */}
-                    <div className="max-h-80 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-900 rounded-2xl border dark:border-gray-700" dir="ltr">
+                    {/* شبکه آزاد کلیدها در ادمین */}
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-2xl border dark:border-gray-700" dir="ltr">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
                         {adminOrderedBlocks.map((block, bIdx) => {
                           if (!block) return <div key={`admin-empty-${bIdx}`} />;
                           return (
-                            <div key={bIdx} className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border dark:border-gray-700 flex flex-col gap-1.5">
-                              <span className="text-[10px] font-mono text-gray-400 font-bold text-center border-b dark:border-gray-700 pb-1">
-                                {block[0]} - {block[block.length - 1]}
+                            <div key={bIdx} className="bg-white dark:bg-gray-800 p-3 rounded-xl border dark:border-gray-700 flex flex-col gap-2">
+                              <span className="text-xs font-mono text-gray-400 font-bold text-center border-b dark:border-gray-700 pb-1">
+                                {toFaNum(block[0])} - {toFaNum(block[block.length - 1])}
                               </span>
                               {block.map(qNum => (
                                 <div key={qNum} className="flex items-center justify-between p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                  <span className="font-bold text-xs text-gray-500 dark:text-gray-300 font-mono text-left w-6">{qNum}_</span>
+                                  <span className="font-bold text-xs text-gray-500 dark:text-gray-300 font-mono text-left w-6">
+                                    {toFaNum(qNum)}_
+                                  </span>
                                   <div className="flex gap-1">
                                     {[1, 2, 3, 4].map(opt => (
                                       <button
@@ -227,7 +230,7 @@ export default function AdminDashboard() {
                                             : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
                                         }`}
                                       >
-                                        {opt}
+                                        {toFaNum(opt)}
                                       </button>
                                     ))}
                                   </div>
@@ -254,7 +257,7 @@ export default function AdminDashboard() {
                       <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border dark:border-gray-700 flex flex-col justify-between">
                         <div>
                           <span className="font-bold text-lg">{s.title}</span>
-                          <p className="text-xs text-gray-500 mt-1">{s.total_questions} سوال | نوع: {s.type === 'exam' ? 'زمان‌دار' : 'عادی'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{toFaNum(s.total_questions)} سوال | نوع: {s.type === 'exam' ? 'زمان‌دار' : 'عادی'}</p>
                         </div>
                         <div className="flex gap-2 mt-4 pt-3 border-t dark:border-gray-700">
                           <button onClick={() => startEditSheet(s)} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-1.5 rounded text-xs font-bold">ویرایش</button>
