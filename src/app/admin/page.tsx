@@ -2,67 +2,87 @@
 
 import { useState, useEffect } from "react";
 
-export default function AdminPage() {
+export default function AdminDashboard() {
   const [books, setBooks] = useState<any[]>([]);
+  const [selectedBook, setSelectedBook] = useState<any>(null); // کتاب انتخاب شده
+  const [answerSheets, setAnswerSheets] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // استیت‌های فرم کتاب/آزمون
-  const [bookForm, setBookForm] = useState({ custom_id: "", title: "", description: "" });
+  // فرم کتاب
+  const [bookTitle, setBookTitle] = useState("");
+  const [bookDesc, setBookDesc] = useState("");
 
-  // استیت‌های فرم پاسخ‌برگ
-  const [sheetForm, setSheetForm] = useState({
-    book_id: "", custom_id: "", title: "", type: "practice",
-    duration_minutes: "", start_question_number: 1, total_questions: 10
-  });
-  
-  // استیت کلید سوالات (مثلاً { "1": 2, "2": 4 })
+  // فرم پاسخ‌برگ
+  const [sheetTitle, setSheetTitle] = useState("");
+  const [sheetType, setSheetType] = useState("practice");
+  const [duration, setDuration] = useState("");
+  const [startNum, setStartNum] = useState(1);
+  const [totalQuestions, setTotalQuestions] = useState(10);
   const [keys, setKeys] = useState<Record<number, number>>({});
 
-  // دریافت لیست کتاب‌ها هنگام لود صفحه
   useEffect(() => {
     fetchBooks();
   }, []);
 
+  useEffect(() => {
+    if (selectedBook) {
+      fetchAnswerSheets(selectedBook.id);
+    }
+  }, [selectedBook]);
+
   const fetchBooks = async () => {
     const res = await fetch("/api/books");
-    if (res.ok) {
-      const data = (await res.json()) as any[];
-      setBooks(data);
-    }
+    if (res.ok) setBooks((await res.json()) as any[]);
   };
 
-  // ارسال فرم کتاب/آزمون
-  const handleBookSubmit = async (e: React.FormEvent) => {
+  const fetchAnswerSheets = async (bookId: string) => {
+    const res = await fetch(`/api/answer-sheets?book_id=${bookId}`);
+    if (res.ok) setAnswerSheets((await res.json()) as any[]);
+  };
+
+  // ساخت کتاب جدید
+  const handleCreateBook = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
-    
     const res = await fetch("/api/books", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bookForm),
+      body: JSON.stringify({ title: bookTitle, description: bookDesc }),
     });
-    
     if (res.ok) {
-      setMessage("✅ مجموعه/آزمون با موفقیت ثبت شد!");
-      setBookForm({ custom_id: "", title: "", description: "" });
-      fetchBooks(); // بروزرسانی لیست
-    } else {
-      setMessage("❌ خطا در ثبت اطلاعات.");
+      setMessage("✅ کتاب/آزمون جدید اضافه شد");
+      setBookTitle("");
+      setBookDesc("");
+      fetchBooks();
     }
     setLoading(false);
   };
 
-  // ارسال فرم پاسخ‌برگ
-  const handleSheetSubmit = async (e: React.FormEvent) => {
+  // حذف کتاب
+  const handleDeleteBook = async (id: string) => {
+    if (!confirm("آیا از حذف این مجموعه مطمئن هستید؟")) return;
+    const res = await fetch(`/api/books?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      fetchBooks();
+      if (selectedBook?.id === id) setSelectedBook(null);
+    }
+  };
+
+  // ساخت پاسخ‌برگ جدید
+  const handleCreateSheet = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedBook) return;
     setLoading(true);
-    setMessage("");
 
     const payload = {
-      ...sheetForm,
-      duration_minutes: sheetForm.duration_minutes ? parseInt(sheetForm.duration_minutes) : null,
+      book_id: selectedBook.id,
+      title: sheetTitle,
+      type: sheetType,
+      duration_minutes: duration ? parseInt(duration) : null,
+      start_question_number: startNum,
+      total_questions: totalQuestions,
       correct_keys: keys
     };
 
@@ -73,135 +93,181 @@ export default function AdminPage() {
     });
 
     if (res.ok) {
-      setMessage("✅ پاسخ‌برگ با موفقیت ثبت شد!");
+      setMessage("✅ پاسخ‌برگ جدید ثبت شد");
+      setSheetTitle("");
       setKeys({});
-    } else {
-      setMessage("❌ خطا در ثبت پاسخ‌برگ.");
+      fetchAnswerSheets(selectedBook.id);
     }
     setLoading(false);
   };
 
-  // تولید آرایه برای رندر کردن اینپوت‌های کلید سوالات
-  const questionsArray = Array.from({ length: sheetForm.total_questions }, (_, i) => i + sheetForm.start_question_number);
+  // حذف پاسخ‌برگ
+  const handleDeleteSheet = async (id: string) => {
+    if (!confirm("آیا از حذف این پاسخ‌برگ مطمئن هستید؟")) return;
+    const res = await fetch(`/api/answer-sheets?id=${id}`, { method: "DELETE" });
+    if (res.ok) fetchAnswerSheets(selectedBook.id);
+  };
+
+  const questionsArray = Array.from({ length: totalQuestions }, (_, i) => i + startNum);
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8 text-center text-blue-600 dark:text-blue-400">پنل مدیریت تست‌بان</h1>
-      
-      {message && (
-        <div className="mb-6 p-4 rounded-lg text-center font-bold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-          {message}
-        </div>
-      )}
-
-      <div className="grid md:grid-cols-2 gap-8">
-        
-        {/* فرم اول: ثبت کتاب یا آزمون */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">۱. تعریف مجموعه (کتاب یا آزمون)</h2>
-          <form onSubmit={handleBookSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">شناسه اختصاصی (انگلیسی - مثلا bio-1403)</label>
-              <input required type="text" dir="ltr"
-                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                value={bookForm.custom_id} onChange={e => setBookForm({...bookForm, custom_id: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">نام کتاب یا آزمون</label>
-              <input required type="text" 
-                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                value={bookForm.title} onChange={e => setBookForm({...bookForm, title: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">توضیحات (اختیاری)</label>
-              <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                value={bookForm.description} onChange={e => setBookForm({...bookForm, description: e.target.value})} />
-            </div>
-            <button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded font-bold transition">
-              ثبت مجموعه
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8 border-b pb-4 dark:border-gray-800">
+          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">پنل مدیریت تست‌بان</h1>
+          {selectedBook && (
+            <button onClick={() => setSelectedBook(null)} className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg text-sm">
+              ← بازگشت به لیست کتاب‌ها
             </button>
-          </form>
+          )}
         </div>
 
-        {/* فرم دوم: ثبت پاسخ‌برگ */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">۲. تعریف پاسخ‌برگ (فصل / بخش)</h2>
-          <form onSubmit={handleSheetSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm mb-1">انتخاب مجموعه (کتاب/آزمون)</label>
-              <select required className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                value={sheetForm.book_id} onChange={e => setSheetForm({...sheetForm, book_id: e.target.value})}>
-                <option value="">-- انتخاب کنید --</option>
-                {books.map(b => <option key={b.id} value={b.id}>{b.title} ({b.custom_id})</option>)}
-              </select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">شناسه پاسخ‌برگ (مثلا ch1)</label>
-                <input required type="text" dir="ltr" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                  value={sheetForm.custom_id} onChange={e => setSheetForm({...sheetForm, custom_id: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">عنوان (مثلا فصل اول)</label>
-                <input required type="text" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                  value={sheetForm.title} onChange={e => setSheetForm({...sheetForm, title: e.target.value})} />
-              </div>
+        {message && <div className="mb-6 p-3 bg-green-100 text-green-800 rounded-lg text-center font-bold">{message}</div>}
+
+        {/* نمای اول: مدیریت کتاب‌ها / آزمون‌ها */}
+        {!selectedBook ? (
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700 h-fit">
+              <h2 className="text-lg font-bold mb-4">افزودن کتاب یا آزمون جدید</h2>
+              <form onSubmit={handleCreateBook} className="space-y-4">
+                <div>
+                  <label className="block text-sm mb-1">نام کتاب یا آزمون</label>
+                  <input required type="text" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                    value={bookTitle} onChange={e => setBookTitle(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">توضیحات</label>
+                  <textarea className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                    value={bookDesc} onChange={e => setBookDesc(e.target.value)} />
+                </div>
+                <button disabled={loading} className="w-full bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">
+                  ثبت کتاب / آزمون
+                </button>
+              </form>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">نوع</label>
-                <select className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                  value={sheetForm.type} onChange={e => setSheetForm({...sheetForm, type: e.target.value})}>
-                  <option value="practice">تست عادی (بدون زمان)</option>
-                  <option value="exam">آزمون (زمان‌دار)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-1">زمان (دقیقه)</label>
-                <input type="number" disabled={sheetForm.type === 'practice'} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
-                  value={sheetForm.duration_minutes} onChange={e => setSheetForm({...sheetForm, duration_minutes: e.target.value})} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">شماره اولین سوال</label>
-                <input required type="number" min="1" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                  value={sheetForm.start_question_number} onChange={e => setSheetForm({...sheetForm, start_question_number: parseInt(e.target.value) || 1})} />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">تعداد کل سوالات</label>
-                <input required type="number" min="1" max="300" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-                  value={sheetForm.total_questions} onChange={e => setSheetForm({...sheetForm, total_questions: parseInt(e.target.value) || 1})} />
-              </div>
-            </div>
-
-            {/* بخش ورود کلید سوالات */}
-            <div className="mt-6 border-t pt-4">
-              <label className="block font-bold mb-3 text-blue-600 dark:text-blue-400">وارد کردن کلید سوالات:</label>
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-60 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded border dark:border-gray-700">
-                {questionsArray.map(qNum => (
-                  <div key={qNum} className="flex flex-col items-center">
-                    <span className="text-xs mb-1 text-gray-500">{qNum}</span>
-                    <input 
-                      type="number" min="1" max="4"
-                      className="w-12 p-1 text-center border rounded dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-                      value={keys[qNum] || ""}
-                      onChange={(e) => setKeys({...keys, [qNum]: parseInt(e.target.value)})}
-                    />
+            <div className="md:col-span-2 space-y-4">
+              <h2 className="text-lg font-bold">لیست کتاب‌ها و آزمون‌های موجود</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {books.map(b => (
+                  <div key={b.id} className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow border dark:border-gray-700 flex flex-col justify-between">
+                    <div>
+                      <span className="text-xs font-mono bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
+                        آیدی: {b.custom_id}
+                      </span>
+                      <h3 className="font-bold text-lg mt-2">{b.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{b.description || "بدون توضیحات"}</p>
+                    </div>
+                    <div className="flex gap-2 mt-4 pt-3 border-t dark:border-gray-700">
+                      <button onClick={() => setSelectedBook(b)} className="flex-1 bg-green-600 text-white py-1.5 rounded text-sm font-bold hover:bg-green-700">
+                        مدیریت پاسخ‌برگ‌ها
+                      </button>
+                      <button onClick={() => handleDeleteBook(b.id)} className="bg-red-500 text-white px-3 py-1.5 rounded text-sm hover:bg-red-600">
+                        حذف
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+        ) : (
+          /* نمای دوم: مدیریت پاسخ‌برگ‌های کتاب انتخاب شده */
+          <div className="space-y-8">
+            <div className="bg-blue-50 dark:bg-gray-800 p-4 rounded-xl border border-blue-200 dark:border-gray-700 flex justify-between items-center">
+              <div>
+                <span className="text-xs font-mono text-gray-500">کتاب انتخاب شده:</span>
+                <h2 className="text-xl font-bold text-blue-600 dark:text-blue-400">{selectedBook.title} ({selectedBook.custom_id})</h2>
+              </div>
+            </div>
 
-            <button disabled={loading} className="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded font-bold transition mt-4">
-              ثبت پاسخ‌برگ و کلیدها
-            </button>
-          </form>
-        </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* فرم افزودن پاسخ‌برگ */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700">
+                <h3 className="font-bold mb-4">افزودن پاسخ‌برگ به این کتاب</h3>
+                <form onSubmit={handleCreateSheet} className="space-y-4">
+                  <div>
+                    <label className="block text-sm mb-1">عنوان (مثلا: فصل ۱)</label>
+                    <input required type="text" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                      value={sheetTitle} onChange={e => setSheetTitle(e.target.value)} />
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs mb-1">نوع</label>
+                      <select className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={sheetType} onChange={e => setSheetType(e.target.value)}>
+                        <option value="practice">تست عادی</option>
+                        <option value="exam">آزمون (زمان‌دار)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">زمان (دقیقه)</label>
+                      <input type="number" disabled={sheetType === 'practice'} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
+                        value={duration} onChange={e => setDuration(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs mb-1">شماره اولین سوال</label>
+                      <input type="number" min="1" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={startNum} onChange={e => setStartNum(parseInt(e.target.value) || 1)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">تعداد کل سوالات</label>
+                      <input type="number" min="1" max="300" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={totalQuestions} onChange={e => setTotalQuestions(parseInt(e.target.value) || 1)} />
+                    </div>
+                  </div>
+
+                  {/* کلید سوالات */}
+                  <div className="mt-4">
+                    <label className="block text-xs font-bold mb-2">کلید سوالات (گزینه ۱ تا ۴):</label>
+                    <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded border">
+                      {questionsArray.map(qNum => (
+                        <div key={qNum} className="flex flex-col items-center">
+                          <span className="text-[10px] text-gray-500">{qNum}</span>
+                          <input type="number" min="1" max="4" className="w-9 p-1 text-center border rounded dark:bg-gray-700 text-xs"
+                            value={keys[qNum] || ""} onChange={e => setKeys({...keys, [qNum]: parseInt(e.target.value)})} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button disabled={loading} className="w-full bg-blue-600 text-white p-2 rounded font-bold hover:bg-blue-700">
+                    ثبت پاسخ‌برگ
+                  </button>
+                </form>
+              </div>
+
+              {/* لیست پاسخ‌برگ‌های موجود */}
+              <div className="md:col-span-2 space-y-4">
+                <h3 className="font-bold">پاسخ‌برگ‌های این کتاب</h3>
+                <div className="space-y-3">
+                  {answerSheets.map(s => (
+                    <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border dark:border-gray-700 flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg">{s.title}</span>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded font-mono">آیدی: {s.custom_id}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${s.type === 'exam' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                            {s.type === 'exam' ? `آزمون (${s.duration_minutes} دقیقه)` : 'تست عادی'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">تعداد سوالات: {s.total_questions} | شماره شروع: {s.start_question_number}</p>
+                      </div>
+                      <button onClick={() => handleDeleteSheet(s.id)} className="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600">
+                        حذف
+                      </button>
+                    </div>
+                  ))}
+                  {answerSheets.length === 0 && <p className="text-gray-500 text-center py-8">هنوز هیچ پاسخ‌برگی برای این کتاب ثبت نشده است.</p>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

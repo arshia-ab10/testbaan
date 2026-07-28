@@ -1,54 +1,59 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-// ۱. ثبت کتاب یا آزمون جدید (POST)
-export async function POST(request: Request) {
+// دریافت لیست کتاب‌ها
+export async function GET() {
   try {
-    const body = (await request.json()) as any;
-    const { custom_id, title, description } = body;
-
-    if (!custom_id || !title) {
-      return NextResponse.json({ error: 'شناسه اختصاصی و عنوان کتاب الزامی است' }, { status: 400 });
-    }
-
-    // دسترسی استاندارد به دیتابیس در OpenNext
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
-    
-    if (!db) {
-      return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
-    }
+    if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    const id = crypto.randomUUID();
-
-    await db.prepare(
-      'INSERT INTO books (id, custom_id, title, description) VALUES (?, ?, ?, ?)'
-    ).bind(id, custom_id, title, description || '').run();
-
-    return NextResponse.json({ 
-      message: 'کتاب با موفقیت ساخته شد', 
-      book: { id, custom_id, title } 
-    }, { status: 201 });
-
+    const { results } = await db.prepare('SELECT * FROM books ORDER BY created_at DESC').all();
+    return NextResponse.json(results, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// ۲. دریافت لیست کتاب‌ها (GET)
-export async function GET() {
+// ساخت کتاب جدید
+export async function POST(request: Request) {
   try {
-    // دسترسی استاندارد به دیتابیس در OpenNext
+    const body = (await request.json()) as any;
+    const { title, description } = body;
+
+    if (!title) return NextResponse.json({ error: 'عنوان کتاب/آزمون الزامی است' }, { status: 400 });
+
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
-    
-    if (!db) {
-      return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
-    }
+    if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    const { results } = await db.prepare('SELECT id, custom_id, title FROM books ORDER BY created_at DESC').all();
-    
-    return NextResponse.json(results, { status: 200 });
+    // تولید آیدی ۱۰ رقمی تصادفی
+    const custom_id = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const id = crypto.randomUUID();
+
+    await db.prepare('INSERT INTO books (id, custom_id, title, description) VALUES (?, ?, ?, ?)')
+      .bind(id, custom_id, title, description || '').run();
+
+    return NextResponse.json({ message: 'کتاب ساخته شد', book: { id, custom_id, title } }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// حذف کتاب
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ error: 'شناسه ارسال نشده است' }, { status: 400 });
+
+    const { env } = await getCloudflareContext();
+    const db = (env as any).testbaan_db;
+    if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
+
+    await db.prepare('DELETE FROM books WHERE id = ?').bind(id).run();
+    return NextResponse.json({ message: 'کتاب با موفقیت حذف شد' }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
