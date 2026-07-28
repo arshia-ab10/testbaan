@@ -114,6 +114,16 @@ export default function AdminDashboard() {
     setUserPermissions(prev => prev.includes(sheetId) ? prev.filter(id => id !== sheetId) : [...prev, sheetId]);
   };
 
+  // دسته‌بندی ۱۰تایی سوالات برای ادمین
+  const adminBlocks: number[][] = [];
+  for (let i = 0; i < totalQuestions; i += 10) {
+    const chunk = [];
+    for (let j = i; j < Math.min(i + 10, totalQuestions); j++) {
+      chunk.push(startNum + j);
+    }
+    adminBlocks.push(chunk);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-6xl mx-auto">
@@ -157,15 +167,16 @@ export default function AdminDashboard() {
               
               <div className="grid md:grid-cols-3 gap-8">
                 {/* فرم ساخت / ویرایش پاسخ‌برگ */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700 md:col-span-3">
                   <h3 className="font-bold mb-4">{editingSheetId ? 'ویرایش پاسخ‌برگ' : 'افزودن پاسخ‌برگ جدید'}</h3>
                   <form onSubmit={handleSaveSheet} className="space-y-4">
-                    <input required placeholder="عنوان (مثلا فصل ۱)" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={sheetTitle} onChange={e => setSheetTitle(e.target.value)} />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <input required placeholder="عنوان (مثلا فصل ۱)" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={sheetTitle} onChange={e => setSheetTitle(e.target.value)} />
                       <select className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={sheetType} onChange={e => setSheetType(e.target.value)}><option value="practice">تست عادی</option><option value="exam">آزمون زمان‌دار</option></select>
                       <input type="number" placeholder="زمان (دقیقه)" disabled={sheetType === 'practice'} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={duration} onChange={e => setDuration(e.target.value)} />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+
+                    <div className="grid md:grid-cols-2 gap-4">
                       <input type="number" placeholder="شروع سوال" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={startNum} onChange={e => setStartNum(parseInt(e.target.value) || 1)} />
                       <input type="number" placeholder="تعداد سوال" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={totalQuestions} onChange={e => setTotalQuestions(parseInt(e.target.value) || 1)} />
                     </div>
@@ -175,56 +186,64 @@ export default function AdminDashboard() {
                       <input type="text" placeholder="مثلا: 12341234..." className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-xs font-mono" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* دکمه‌های دایره‌ای زمردی برای کلید سوالات در ادمین */}
-                    <div className="max-h-60 overflow-y-auto space-y-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-xl border dark:border-gray-700">
-                      {Array.from({ length: totalQuestions }, (_, i) => i + startNum).map(qNum => (
-                        <div key={qNum} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
-                          <span className="font-bold text-xs text-gray-500 dark:text-gray-300">{qNum}-</span>
-                          <div className="flex gap-1.5">
-                            {[1, 2, 3, 4].map(opt => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => setKeys(prev => ({
-                                  ...prev,
-                                  [qNum]: prev[qNum] === opt ? 0 : opt
-                                }))}
-                                className={`w-7 h-7 rounded-full text-xs font-bold border-2 transition-all flex items-center justify-center ${
-                                  keys[qNum] === opt
-                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-emerald-500'
-                                }`}
-                              >
-                                {opt}
-                              </button>
+                    {/* دکمه‌های ۱۰تایی کنکوری برای ورود کلیدها در ادمین */}
+                    <div className="max-h-80 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-900 rounded-2xl border dark:border-gray-700" dir="ltr">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {adminBlocks.map((block, bIdx) => (
+                          <div key={bIdx} className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border dark:border-gray-700 flex flex-col gap-1.5">
+                            <span className="text-[10px] font-mono text-gray-400 font-bold text-center border-b dark:border-gray-700 pb-1">
+                              {block[0]} - {block[block.length - 1]}
+                            </span>
+                            {block.map(qNum => (
+                              <div key={qNum} className="flex items-center justify-between p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <span className="font-bold text-xs text-gray-500 dark:text-gray-300 font-mono text-left w-6">{qNum}_</span>
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4].map(opt => (
+                                    <button
+                                      key={opt}
+                                      type="button"
+                                      onClick={() => setKeys(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? 0 : opt }))}
+                                      className={`w-6 h-6 rounded-full text-xs font-bold border transition-all flex items-center justify-center ${
+                                        keys[qNum] === opt
+                                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                                          : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex gap-2">
-                      <button disabled={loading} className="flex-1 bg-blue-600 text-white p-2 rounded font-bold">{editingSheetId ? 'ذخیره تغییرات' : 'ثبت پاسخ‌برگ'}</button>
-                      {editingSheetId && <button type="button" onClick={() => {setEditingSheetId(null); setSheetTitle(""); setKeys({});}} className="bg-gray-400 text-white px-3 rounded font-bold">انصراف</button>}
+                      <button disabled={loading} className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold">{editingSheetId ? 'ذخیره تغییرات' : 'ثبت پاسخ‌برگ'}</button>
+                      {editingSheetId && <button type="button" onClick={() => {setEditingSheetId(null); setSheetTitle(""); setKeys({});}} className="bg-gray-400 text-white px-4 rounded-xl font-bold">انصراف</button>}
                     </div>
                   </form>
                 </div>
 
                 {/* لیست پاسخ‌برگ‌ها */}
-                <div className="md:col-span-2 space-y-3">
+                <div className="md:col-span-3 space-y-3">
                   <h3 className="font-bold mb-4">پاسخ‌برگ‌های این مجموعه</h3>
-                  {answerSheets.map(s => (
-                    <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border dark:border-gray-700 flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-lg">{s.title}</span>
-                        <p className="text-xs text-gray-500 mt-1">{s.total_questions} سوال | نوع: {s.type === 'exam' ? 'زمان‌دار' : 'عادی'}</p>
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {answerSheets.map(s => (
+                      <div key={s.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border dark:border-gray-700 flex flex-col justify-between">
+                        <div>
+                          <span className="font-bold text-lg">{s.title}</span>
+                          <p className="text-xs text-gray-500 mt-1">{s.total_questions} سوال | نوع: {s.type === 'exam' ? 'زمان‌دار' : 'عادی'}</p>
+                        </div>
+                        <div className="flex gap-2 mt-4 pt-3 border-t dark:border-gray-700">
+                          <button onClick={() => startEditSheet(s)} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-1.5 rounded text-xs font-bold">ویرایش</button>
+                          <button onClick={() => handleDeleteSheet(s.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs">حذف</button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => startEditSheet(s)} className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs transition font-bold">ویرایش</button>
-                        <button onClick={() => handleDeleteSheet(s.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs transition">حذف</button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

@@ -3,7 +3,6 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  // رفع ارور params.id === undefined در Next.js 15
   const resolvedParams = params instanceof Promise ? use(params) : params;
   const sheetId = resolvedParams?.id;
 
@@ -21,7 +20,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       body: JSON.stringify({ action: "fetch", sheetId })
     })
       .then(res => res.json())
-      .then((data : any) => {
+      .then((data: any) => {
         if (data.error) setErrorMsg(data.error);
         else setExam(data);
       });
@@ -42,17 +41,26 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   };
 
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 p-6">{errorMsg}</div>;
-  if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری پاسخ‌برگ...</div>;
+  if (!exam) return <div className="min-h-screen flex items-center justify-center font-bold">در حال بارگذاری پاسخ‌برگ...</div>;
 
-  const questions = Array.from({ length: exam.total_questions }, (_, i) => exam.start_question_number + i);
+  // دسته‌بندی سوالات به بلوک‌های ۱۰ تایی
+  const blocks: number[][] = [];
+  for (let i = 0; i < exam.total_questions; i += 10) {
+    const chunk = [];
+    for (let j = i; j < Math.min(i + 10, exam.total_questions); j++) {
+      chunk.push(exam.start_question_number + j);
+    }
+    blocks.push(chunk);
+  }
+
   const answeredCount = Object.values(answers).filter(val => val > 0).length;
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border dark:border-gray-700">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border dark:border-gray-700">
         
         {/* هدر پاسخ‌برگ */}
-        <div className="bg-blue-600 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="bg-blue-600 text-white p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold">{exam.title}</h1>
             <p className="text-xs text-blue-100 mt-1">پاسخ داده شده: {answeredCount} از {exam.total_questions}</p>
@@ -62,36 +70,48 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
           </button>
         </div>
 
-        {/* لیست سوالات به شکل دکمه‌های دایره‌ای کنکوری */}
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto">
-          {questions.map(q => (
-            <div key={q} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-3 rounded-2xl border dark:border-gray-600">
-              <span className="font-bold text-gray-500 dark:text-gray-300 w-8 text-center">{q}-</span>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4].map(opt => {
-                  const isSelected = answers[q] === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setAnswers(prev => ({
-                        ...prev,
-                        [q]: prev[q] === opt ? 0 : opt
-                      }))}
-                      className={`w-9 h-9 rounded-full font-bold text-sm border-2 transition-all duration-150 flex items-center justify-center ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
+        {/* شبکه پاسخ‌برگ کنکوری (چپ به راست، ستون‌های ۱۰ تایی) */}
+        <div className="p-6 max-h-[75vh] overflow-y-auto" dir="ltr">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
+            {blocks.map((block, blockIndex) => (
+              <div key={blockIndex} className="bg-gray-50 dark:bg-gray-900/60 p-3 rounded-2xl border dark:border-gray-700/60 flex flex-col gap-2">
+                {/* عنوان شماره سوالات هر بلوک ۱۰ تایی */}
+                <div className="text-[11px] font-mono text-gray-400 font-bold mb-1 text-center border-b dark:border-gray-700 pb-1">
+                  سوالات {block[0]} تا {block[block.length - 1]}
+                </div>
+                
+                {block.map(q => (
+                  <div key={q} className="flex items-center justify-between gap-3 p-1.5 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700/50 shadow-sm">
+                    <span className="font-bold text-xs text-gray-600 dark:text-gray-300 w-7 font-mono text-left">{q}_</span>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4].map(opt => {
+                        const isSelected = answers[q] === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setAnswers(prev => ({
+                              ...prev,
+                              [q]: prev[q] === opt ? 0 : opt
+                            }))}
+                            className={`w-7 h-7 rounded-full font-bold text-xs border-2 transition-all flex items-center justify-center ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-600 shadow scale-105'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
       </div>
     </div>
   );
