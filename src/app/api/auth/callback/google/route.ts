@@ -43,6 +43,9 @@ export async function GET(request: Request) {
     let userRole = "user";
     let firstName = given_name || "";
     let lastName = family_name || "";
+    
+    // تولید توکن یکتای امنیتی
+    const sessionToken = crypto.randomUUID() + '-' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
     if (db) {
       const { results } = await db.prepare('SELECT * FROM users WHERE email = ? LIMIT 1').bind(email).all();
@@ -54,21 +57,19 @@ export async function GET(request: Request) {
         firstName = existingUser.first_name || firstName;
         lastName = existingUser.last_name || lastName;
         
-        if (!existingUser.first_name) {
-          await db.prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?').bind(firstName, lastName, userId).run();
-        }
+        // ذخیره توکن جدید در دیتابیس
+        await db.prepare('UPDATE users SET session_token = ?, first_name = ?, last_name = ? WHERE id = ?')
+          .bind(sessionToken, firstName, lastName, userId).run();
       } else {
         userId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-        // ستون name حذف شد
-        await db.prepare('INSERT INTO users (id, email, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)')
-          .bind(userId, email, firstName, lastName, 'user').run();
+        await db.prepare('INSERT INTO users (id, email, first_name, last_name, role, session_token) VALUES (?, ?, ?, ?, ?, ?)')
+          .bind(userId, email, firstName, lastName, 'user', sessionToken).run();
       }
     }
 
     const cookieStore = await cookies();
-    // ستون name از سشن هم حذف شد
-    const sessionData = JSON.stringify({ id: userId, email, first_name: firstName, last_name: lastName, role: userRole });
-    cookieStore.set('user_session', sessionData, {
+    // ذخیره فقط توکن امنیتی در کوکی به جای اطلاعات مستقیم
+    cookieStore.set('user_session', sessionToken, {
       httpOnly: true, secure: true, path: '/', maxAge: 60 * 60 * 24 * 7,
     });
 
