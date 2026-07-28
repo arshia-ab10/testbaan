@@ -5,11 +5,13 @@ export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   const clientId = (env as any).GOOGLE_CLIENT_ID;
   
-  const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  const url = new URL(request.url);
+  // اجبار به استفاده از https در کلودفلر
+  const protocol = url.hostname === 'localhost' ? 'http' : 'https';
+  const redirectUri = `${protocol}://${url.host}/api/auth/callback/google`;
 
   if (!clientId) {
-    return NextResponse.json({ error: 'GOOGLE_CLIENT_ID در کلودفلر تنظیم نشده است' }, { status: 500 });
+    return NextResponse.json({ error: 'GOOGLE_CLIENT_ID تنظیم نشده است' }, { status: 500 });
   }
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +

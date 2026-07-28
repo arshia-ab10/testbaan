@@ -1,16 +1,26 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: any }) {
   const cookieStore = await cookies();
   const session = cookieStore.get("user_session");
   const user = session ? JSON.parse(session.value) : null;
+  
+  // دریافت ارور از آدرس سایت (در صورت وجود)
+  const error = searchParams?.error;
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border dark:border-gray-700 text-center">
         <h1 className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-3">تست‌بان</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-8">سامانه آنلاین برگزاری آزمون و پاسخ‌برگ الکترونیکی</p>
+
+        {/* نمایش کادر خطا در صورت وجود مشکل در ورود */}
+        {error && (
+          <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-xl text-sm font-bold border border-red-200">
+            خطا در ورود: {error}
+          </div>
+        )}
 
         {user ? (
           <div className="space-y-4">
