@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Link from "next/link";
 import { cookies } from "next/headers";
 
@@ -10,6 +11,10 @@ export default async function Home({ searchParams }: { searchParams: any }) {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl border dark:border-gray-700 text-center">
+      <div className="flex items-center justify-center gap-3 mb-3">
+        <Logo className="w-12 h-12" />
+        <h1 className="text-4xl font-black text-blue-600 dark:text-blue-400">تست‌بان</h1>
+      </div>
         <h1 className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-3">تست‌بان</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-8">سامانه آنلاین برگزاری آزمون و پاسخ‌برگ الکترونیکی</p>
 
