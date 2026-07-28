@@ -114,7 +114,7 @@ export default function AdminDashboard() {
     setUserPermissions(prev => prev.includes(sheetId) ? prev.filter(id => id !== sheetId) : [...prev, sheetId]);
   };
 
-  // دسته‌بندی ۱۰تایی سوالات برای ادمین
+  // الگوریتم چیدمان ستونی کنکوری برای ادمین
   const adminBlocks: number[][] = [];
   for (let i = 0; i < totalQuestions; i += 10) {
     const chunk = [];
@@ -122,6 +122,22 @@ export default function AdminDashboard() {
       chunk.push(startNum + j);
     }
     adminBlocks.push(chunk);
+  }
+
+  const adminTotalBlocks = adminBlocks.length;
+  const adminMaxCols = 4;
+  const adminNumRows = Math.max(1, Math.ceil(adminTotalBlocks / adminMaxCols));
+
+  const adminOrderedBlocks: (number[] | null)[] = [];
+  for (let r = 0; r < adminNumRows; r++) {
+    for (let c = 0; c < adminMaxCols; c++) {
+      const blockIndex = c * adminNumRows + r;
+      if (blockIndex < adminTotalBlocks) {
+        adminOrderedBlocks.push(adminBlocks[blockIndex]);
+      } else {
+        adminOrderedBlocks.push(null);
+      }
+    }
   }
 
   return (
@@ -186,37 +202,40 @@ export default function AdminDashboard() {
                       <input type="text" placeholder="مثلا: 12341234..." className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-xs font-mono" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* دکمه‌های ۱۰تایی کنکوری برای ورود کلیدها در ادمین */}
+                    {/* شبکه کلیدهای ادمین با الگوریتم ستونی */}
                     <div className="max-h-80 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-900 rounded-2xl border dark:border-gray-700" dir="ltr">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {adminBlocks.map((block, bIdx) => (
-                          <div key={bIdx} className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border dark:border-gray-700 flex flex-col gap-1.5">
-                            <span className="text-[10px] font-mono text-gray-400 font-bold text-center border-b dark:border-gray-700 pb-1">
-                              {block[0]} - {block[block.length - 1]}
-                            </span>
-                            {block.map(qNum => (
-                              <div key={qNum} className="flex items-center justify-between p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <span className="font-bold text-xs text-gray-500 dark:text-gray-300 font-mono text-left w-6">{qNum}_</span>
-                                <div className="flex gap-1">
-                                  {[1, 2, 3, 4].map(opt => (
-                                    <button
-                                      key={opt}
-                                      type="button"
-                                      onClick={() => setKeys(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? 0 : opt }))}
-                                      className={`w-6 h-6 rounded-full text-xs font-bold border transition-all flex items-center justify-center ${
-                                        keys[qNum] === opt
-                                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                                          : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-                                      }`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
+                        {adminOrderedBlocks.map((block, bIdx) => {
+                          if (!block) return <div key={`admin-empty-${bIdx}`} />;
+                          return (
+                            <div key={bIdx} className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border dark:border-gray-700 flex flex-col gap-1.5">
+                              <span className="text-[10px] font-mono text-gray-400 font-bold text-center border-b dark:border-gray-700 pb-1">
+                                {block[0]} - {block[block.length - 1]}
+                              </span>
+                              {block.map(qNum => (
+                                <div key={qNum} className="flex items-center justify-between p-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                  <span className="font-bold text-xs text-gray-500 dark:text-gray-300 font-mono text-left w-6">{qNum}_</span>
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4].map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setKeys(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? 0 : opt }))}
+                                        className={`w-6 h-6 rounded-full text-xs font-bold border transition-all flex items-center justify-center ${
+                                          keys[qNum] === opt
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                                        }`}
+                                      >
+                                        {opt}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 

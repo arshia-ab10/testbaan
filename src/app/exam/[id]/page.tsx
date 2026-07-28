@@ -10,7 +10,22 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [maxCols, setMaxCols] = useState(4);
   const router = useRouter();
+
+  // محاسبه هوشمند تعداد ستون‌های مجاز بر اساس عرض مانیتور
+  useEffect(() => {
+    const updateCols = () => {
+      const w = window.innerWidth;
+      if (w < 640) setMaxCols(1);
+      else if (w < 768) setMaxCols(2);
+      else if (w < 1024) setMaxCols(3);
+      else setMaxCols(4);
+    };
+    updateCols();
+    window.addEventListener('resize', updateCols);
+    return () => window.removeEventListener('resize', updateCols);
+  }, []);
 
   useEffect(() => {
     if (!sheetId) return;
@@ -43,7 +58,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 p-6">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center font-bold">در حال بارگذاری پاسخ‌برگ...</div>;
 
-  // دسته‌بندی سوالات به بلوک‌های ۱۰ تایی
+  // ۱. ساخت دسته‌های ۱۰ تایی از سوالات
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -51,6 +66,22 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       chunk.push(exam.start_question_number + j);
     }
     blocks.push(chunk);
+  }
+
+  // ۲. الگوریتم چیدمان عمودی و ستونی کنکوری (پر شدن ستون به ستون از چپ)
+  const totalBlocks = blocks.length;
+  const numRows = Math.max(1, Math.ceil(totalBlocks / maxCols));
+
+  const orderedBlocks: (number[] | null)[] = [];
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < maxCols; c++) {
+      const blockIndex = c * numRows + r;
+      if (blockIndex < totalBlocks) {
+        orderedBlocks.push(blocks[blockIndex]);
+      } else {
+        orderedBlocks.push(null);
+      }
+    }
   }
 
   const answeredCount = Object.values(answers).filter(val => val > 0).length;
@@ -70,45 +101,50 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
           </button>
         </div>
 
-        {/* شبکه پاسخ‌برگ کنکوری (چپ به راست، ستون‌های ۱۰ تایی) */}
+        {/* شبکه پاسخ‌برگ کنکوری دقیق (پر شدن عمودی و ستونی) */}
         <div className="p-6 max-h-[75vh] overflow-y-auto" dir="ltr">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
-            {blocks.map((block, blockIndex) => (
-              <div key={blockIndex} className="bg-gray-50 dark:bg-gray-900/60 p-3 rounded-2xl border dark:border-gray-700/60 flex flex-col gap-2">
-                {/* عنوان شماره سوالات هر بلوک ۱۰ تایی */}
-                <div className="text-[11px] font-mono text-gray-400 font-bold mb-1 text-center border-b dark:border-gray-700 pb-1">
-                  سوالات {block[0]} تا {block[block.length - 1]}
-                </div>
-                
-                {block.map(q => (
-                  <div key={q} className="flex items-center justify-between gap-3 p-1.5 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700/50 shadow-sm">
-                    <span className="font-bold text-xs text-gray-600 dark:text-gray-300 w-7 font-mono text-left">{q}_</span>
-                    <div className="flex gap-1.5">
-                      {[1, 2, 3, 4].map(opt => {
-                        const isSelected = answers[q] === opt;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => setAnswers(prev => ({
-                              ...prev,
-                              [q]: prev[q] === opt ? 0 : opt
-                            }))}
-                            className={`w-7 h-7 rounded-full font-bold text-xs border-2 transition-all flex items-center justify-center ${
-                              isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow scale-105'
-                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
+          <div 
+            className="grid gap-6 items-start"
+            style={{ gridTemplateColumns: `repeat(${maxCols}, minmax(0, 1fr))` }}
+          >
+            {orderedBlocks.map((block, idx) => {
+              if (!block) return <div key={`empty-${idx}`} />;
+              return (
+                <div key={idx} className="bg-gray-50 dark:bg-gray-900/60 p-3 rounded-2xl border dark:border-gray-700/60 flex flex-col gap-2">
+                  <div className="text-[11px] font-mono text-gray-400 font-bold mb-1 text-center border-b dark:border-gray-700 pb-1">
+                    سوالات {block[0]} تا {block[block.length - 1]}
                   </div>
-                ))}
-              </div>
-            ))}
+                  
+                  {block.map(q => (
+                    <div key={q} className="flex items-center justify-between gap-3 p-1.5 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700/50 shadow-sm">
+                      <span className="font-bold text-xs text-gray-600 dark:text-gray-300 w-7 font-mono text-left">{q}_</span>
+                      <div className="flex gap-1.5">
+                        {[1, 2, 3, 4].map(opt => {
+                          const isSelected = answers[q] === opt;
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setAnswers(prev => ({
+                                ...prev,
+                                [q]: prev[q] === opt ? 0 : opt
+                              }))}
+                              className={`w-7 h-7 rounded-full font-bold text-xs border-2 transition-all flex items-center justify-center ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow scale-105'
+                                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
