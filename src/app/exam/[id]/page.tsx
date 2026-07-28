@@ -1,27 +1,47 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ExamPage({ params }: { params: { id: string } }) {
+export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+  // رفع ارور params.id === undefined در Next.js 15
+  const resolvedParams = params instanceof Promise ? use(params) : params;
+  const sheetId = resolvedParams?.id;
+
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    fetch(`/api/student/exam?id=${params.id}`).then(res => res.json()).then(setExam);
-  }, [params.id]);
+    if (!sheetId) return;
+    fetch("/api/student/exam", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "fetch", sheetId })
+    })
+      .then(res => res.json())
+      .then((data : any) => {
+        if (data.error) setErrorMsg(data.error);
+        else setExam(data);
+      });
+  }, [sheetId]);
 
   const handleSubmit = async () => {
-    if (!confirm("آیا از ثبت نهایی پاسخ‌برگ مطمئن هستید؟ (پاسخ‌ها قفل خواهند شد)")) return;
+    if (!confirm("آیا از ثبت نهایی پاسخ‌برگ مطمئن هستید؟")) return;
     setLoading(true);
     const res = await fetch("/api/student/exam", {
-      method: "POST", body: JSON.stringify({ sheetId: params.id, userAnswers: answers })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers })
     });
     const data = (await res.json()) as any;
     if (data.success) router.push(`/result/${data.submissionId}`);
+    else alert(data.error || "خطا در ثبت پاسخ‌برگ");
+    setLoading(false);
   };
 
+  if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 p-6">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری پاسخ‌برگ...</div>;
 
   const questions = Array.from({ length: exam.total_questions }, (_, i) => exam.start_question_number + i);
@@ -56,12 +76,12 @@ export default function ExamPage({ params }: { params: { id: string } }) {
                       type="button"
                       onClick={() => setAnswers(prev => ({
                         ...prev,
-                        [q]: prev[q] === opt ? 0 : opt // کلیک مجدد = پاک شدن گزینه
+                        [q]: prev[q] === opt ? 0 : opt
                       }))}
                       className={`w-9 h-9 rounded-full font-bold text-sm border-2 transition-all duration-150 flex items-center justify-center ${
                         isSelected
                           ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
                       }`}
                     >
                       {opt}

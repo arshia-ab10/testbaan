@@ -36,7 +36,6 @@ export default function AdminDashboard() {
   const fetchUsers = async () => { const res = await fetch("/api/admin/users"); if (res.ok) setUsers(await res.json()); };
   const fetchPermissions = async (userId: string) => { const res = await fetch(`/api/admin/permissions?userId=${userId}`); if (res.ok) setUserPermissions(await res.json()); };
 
-  // ورود سریع کلیدها با چسباندن متن (مثل 12341234)
   const handleFastPaste = (text: string) => {
     setFastPasteText(text);
     const digits = text.replace(/[^1-4]/g, '').split('');
@@ -81,7 +80,7 @@ export default function AdminDashboard() {
     const res = await fetch(url, { method, body: JSON.stringify(payload) });
 
     if (res.ok) {
-      setMessage(editingSheetId ? "✅ پاسخ‌برگ ویرایش شد" : "✅ پاسخ‌برگ ساخت شد");
+      setMessage(editingSheetId ? "✅ پاسخ‌برگ ویرایش شد" : "✅ پاسخ‌برگ ساخته شد");
       setSheetTitle(""); setKeys({}); setEditingSheetId(null); setFastPasteText("");
       fetchAnswerSheets(selectedBook.id); fetchAllSheets();
     }
@@ -135,8 +134,8 @@ export default function AdminDashboard() {
               <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700 h-fit">
                 <h2 className="text-lg font-bold mb-4">افزودن کتاب یا آزمون</h2>
                 <form onSubmit={handleCreateBook} className="space-y-4">
-                  <input required placeholder="نام کتاب یا آزمون" className="w-full p-2 border rounded dark:bg-gray-700" value={bookTitle} onChange={e => setBookTitle(e.target.value)} />
-                  <textarea placeholder="توضیحات" className="w-full p-2 border rounded dark:bg-gray-700" value={bookDesc} onChange={e => setBookDesc(e.target.value)} />
+                  <input required placeholder="نام کتاب یا آزمون" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={bookTitle} onChange={e => setBookTitle(e.target.value)} />
+                  <textarea placeholder="توضیحات" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={bookDesc} onChange={e => setBookDesc(e.target.value)} />
                   <button disabled={loading} className="w-full bg-blue-600 text-white p-2 rounded font-bold">ثبت</button>
                 </form>
               </div>
@@ -161,28 +160,45 @@ export default function AdminDashboard() {
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700">
                   <h3 className="font-bold mb-4">{editingSheetId ? 'ویرایش پاسخ‌برگ' : 'افزودن پاسخ‌برگ جدید'}</h3>
                   <form onSubmit={handleSaveSheet} className="space-y-4">
-                    <input required placeholder="عنوان (مثلا فصل ۱)" className="w-full p-2 border rounded dark:bg-gray-700" value={sheetTitle} onChange={e => setSheetTitle(e.target.value)} />
+                    <input required placeholder="عنوان (مثلا فصل ۱)" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={sheetTitle} onChange={e => setSheetTitle(e.target.value)} />
                     <div className="grid grid-cols-2 gap-2">
-                      <select className="w-full p-2 border rounded dark:bg-gray-700" value={sheetType} onChange={e => setSheetType(e.target.value)}><option value="practice">تست عادی</option><option value="exam">آزمون زمان‌دار</option></select>
-                      <input type="number" placeholder="زمان (دقیقه)" disabled={sheetType === 'practice'} className="w-full p-2 border rounded dark:bg-gray-700" value={duration} onChange={e => setDuration(e.target.value)} />
+                      <select className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={sheetType} onChange={e => setSheetType(e.target.value)}><option value="practice">تست عادی</option><option value="exam">آزمون زمان‌دار</option></select>
+                      <input type="number" placeholder="زمان (دقیقه)" disabled={sheetType === 'practice'} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={duration} onChange={e => setDuration(e.target.value)} />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="number" placeholder="شروع سوال" className="w-full p-2 border rounded dark:bg-gray-700" value={startNum} onChange={e => setStartNum(parseInt(e.target.value) || 1)} />
-                      <input type="number" placeholder="تعداد سوال" className="w-full p-2 border rounded dark:bg-gray-700" value={totalQuestions} onChange={e => setTotalQuestions(parseInt(e.target.value) || 1)} />
+                      <input type="number" placeholder="شروع سوال" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={startNum} onChange={e => setStartNum(parseInt(e.target.value) || 1)} />
+                      <input type="number" placeholder="تعداد سوال" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value={totalQuestions} onChange={e => setTotalQuestions(parseInt(e.target.value) || 1)} />
                     </div>
 
-                    {/* ورود سریع کلیدها */}
                     <div>
-                      <label className="block text-xs font-bold mb-1 text-blue-600">ورود سریع کلیدها (چسباندن متن مثل 12341234):</label>
-                      <input type="text" placeholder="مثلا: 12341234..." className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-mono" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
+                      <label className="block text-xs font-bold mb-1 text-blue-600">ورود سریع کلیدها (مثلا 12341234):</label>
+                      <input type="text" placeholder="مثلا: 12341234..." className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-xs font-mono" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* شبکه کلیدها */}
-                    <div className="max-h-48 overflow-y-auto grid grid-cols-5 gap-1 p-2 bg-gray-50 dark:bg-gray-900 rounded border dark:border-gray-700">
+                    {/* دکمه‌های دایره‌ای زمردی برای کلید سوالات در ادمین */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-xl border dark:border-gray-700">
                       {Array.from({ length: totalQuestions }, (_, i) => i + startNum).map(qNum => (
-                        <div key={qNum} className="flex flex-col items-center">
-                          <span className="text-[10px] text-gray-500">{qNum}</span>
-                          <input type="number" min="1" max="4" className="w-9 p-1 text-center border rounded text-xs dark:bg-gray-700" value={keys[qNum] || ""} onChange={e => setKeys({...keys, [qNum]: parseInt(e.target.value)})} />
+                        <div key={qNum} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                          <span className="font-bold text-xs text-gray-500 dark:text-gray-300">{qNum}-</span>
+                          <div className="flex gap-1.5">
+                            {[1, 2, 3, 4].map(opt => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setKeys(prev => ({
+                                  ...prev,
+                                  [qNum]: prev[qNum] === opt ? 0 : opt
+                                }))}
+                                className={`w-7 h-7 rounded-full text-xs font-bold border-2 transition-all flex items-center justify-center ${
+                                  keys[qNum] === opt
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-emerald-500'
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
