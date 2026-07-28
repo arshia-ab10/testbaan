@@ -26,7 +26,9 @@ export default async function Home({ searchParams }: { searchParams: any }) {
           <div className="space-y-4">
             <div className="p-4 bg-green-50 dark:bg-gray-700 rounded-2xl">
               <p className="text-sm text-gray-500 dark:text-gray-300">خوش آمدید،</p>
-              <p className="font-bold text-lg text-green-700 dark:text-green-300">{user.name}</p>
+              <p className="font-bold text-lg text-green-700 dark:text-green-300">
+                {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}` : user.name}
+              </p>
               <p className="text-xs text-gray-400 mt-1 font-mono">{user.email}</p>
             </div>
             
