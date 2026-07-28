@@ -8,8 +8,8 @@ export async function GET() {
     
     if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    // دریافت کاربران به همراه نام و نام خانوادگی
-    const { results } = await db.prepare("SELECT id, name, first_name, last_name, email FROM users WHERE role = 'user' ORDER BY id DESC").all();
+    // انتخاب فقط ستون‌های موجود (بدون name)
+    const { results } = await db.prepare("SELECT id, first_name, last_name, email, role FROM users ORDER BY id DESC").all();
     
     return NextResponse.json(results || [], { status: 200 });
   } catch (error: any) {
