@@ -13,14 +13,14 @@ export async function GET(request: Request) {
     if (!code) return NextResponse.redirect(`${baseUrl}/?error=no_code`);
 
     const { env } = await getCloudflareContext();
-    const clientId = (env as any).GOOGLE_CLIENT_ID;
+    const clientId = (env as any).GOOGLE_CLIENT_ID || '765863500546-a8s2p2cfhtobs68o5am0fv9tt9nm1b0e.apps.googleusercontent.com';
     const clientSecret = (env as any).GOOGLE_CLIENT_SECRET;
 
-    if (!clientId || !clientSecret) {
-      return NextResponse.redirect(`${baseUrl}/?error=missing_credentials`);
+    // ارور دقیق‌تر برای پیدا کردن مشکل
+    if (!clientSecret) {
+      return NextResponse.redirect(`${baseUrl}/?error=secret_not_found_in_cloudflare`);
     }
 
-    // ۱. تبادل کد گوگل با توکن دسترسی
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -35,10 +35,9 @@ export async function GET(request: Request) {
 
     const tokenData = (await tokenResponse.json()) as any;
     if (!tokenData.access_token) {
-      return NextResponse.redirect(`${baseUrl}/?error=token_failed_${tokenData.error || 'unknown'}`);
+      return NextResponse.redirect(`${baseUrl}/?error=token_failed`);
     }
 
-    // ۲. دریافت اطلاعات کاربر
     const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -48,7 +47,6 @@ export async function GET(request: Request) {
 
     if (!email) return NextResponse.redirect(`${baseUrl}/?error=no_email`);
 
-    // ۳. ثبت در دیتابیس
     const db = (env as any).testbaan_db;
     let userId = "";
     let userRole = "user";
@@ -67,12 +65,11 @@ export async function GET(request: Request) {
       }
     }
 
-    // ۴. ست کردن کوکی
     const cookieStore = await cookies();
     const sessionData = JSON.stringify({ id: userId, email, name, role: userRole });
     cookieStore.set('user_session', sessionData, {
       httpOnly: true,
-      secure: true, // اجبار به امن بودن کوکی
+      secure: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
