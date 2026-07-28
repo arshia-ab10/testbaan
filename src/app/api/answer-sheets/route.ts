@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-// دریافت پاسخ‌برگ‌های یک کتاب
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -33,7 +32,6 @@ export async function GET(request: Request) {
   }
 }
 
-// ساخت پاسخ‌برگ جدید
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as any;
@@ -47,8 +45,10 @@ export async function POST(request: Request) {
     const db = (env as any).testbaan_db;
     if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    const custom_id = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    const id = crypto.randomUUID();
+    // تمام آیدی‌ها ۱۰ رقمی تصادفی
+    const random10Digit = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const id = random10Digit;
+    const custom_id = random10Digit;
     const keysJson = JSON.stringify(correct_keys);
 
     await db.prepare(
@@ -61,7 +61,6 @@ export async function POST(request: Request) {
   }
 }
 
-// حذف پاسخ‌برگ
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

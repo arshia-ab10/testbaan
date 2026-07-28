@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-// دریافت لیست کتاب‌ها
 export async function GET() {
   try {
     const { env } = await getCloudflareContext();
@@ -15,7 +14,6 @@ export async function GET() {
   }
 }
 
-// ساخت کتاب جدید
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as any;
@@ -27,9 +25,10 @@ export async function POST(request: Request) {
     const db = (env as any).testbaan_db;
     if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
-    // تولید آیدی ۱۰ رقمی تصادفی
-    const custom_id = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    const id = crypto.randomUUID();
+    // تمام آیدی‌ها ۱۰ رقمی تصادفی
+    const random10Digit = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const id = random10Digit;
+    const custom_id = random10Digit;
 
     await db.prepare('INSERT INTO books (id, custom_id, title, description) VALUES (?, ?, ?, ?)')
       .bind(id, custom_id, title, description || '').run();
@@ -40,7 +39,6 @@ export async function POST(request: Request) {
   }
 }
 
-// حذف کتاب
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -53,7 +51,7 @@ export async function DELETE(request: Request) {
     if (!db) return NextResponse.json({ error: 'دیتابیس متصل نیست' }, { status: 500 });
 
     await db.prepare('DELETE FROM books WHERE id = ?').bind(id).run();
-    return NextResponse.json({ message: 'کتاب با موفقیت حذف شد' }, { status: 200 });
+    return NextResponse.json({ message: 'کتاب حذف شد' }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
