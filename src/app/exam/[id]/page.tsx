@@ -14,6 +14,25 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const [maxCols, setMaxCols] = useState(4);
   const router = useRouter();
 
+  // ۱. خواندن پیش‌نویس پاسخ‌ها از LocalStorage در صورت وجود (جلوگیری از پریدن داده با رفرش)
+  useEffect(() => {
+    if (!sheetId) return;
+    const savedDraft = localStorage.getItem(`testbaan_draft_${sheetId}`);
+    if (savedDraft) {
+      try {
+        setAnswers(JSON.parse(savedDraft));
+      } catch (e) {
+        console.error("Failed to parse saved draft", e);
+      }
+    }
+  }, [sheetId]);
+
+  // ۲. ذخیره خودکار پاسخ‌ها در LocalStorage با هر کلیک کاربر
+  useEffect(() => {
+    if (!sheetId || Object.keys(answers).length === 0) return;
+    localStorage.setItem(`testbaan_draft_${sheetId}`, JSON.stringify(answers));
+  }, [answers, sheetId]);
+
   // محاسبه هوشمند تعداد ستون‌های مجاز بر اساس عرض مانیتور
   useEffect(() => {
     const updateCols = () => {
@@ -51,15 +70,20 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers })
     });
     const data = (await res.json()) as any;
-    if (data.success) router.push(`/result/${data.submissionId}`);
-    else alert(data.error || "خطا در ثبت پاسخ‌برگ");
+    if (data.success) {
+      // پاک کردن پیش‌نویس LocalStorage پس از ثبت نهایی موفق
+      localStorage.removeItem(`testbaan_draft_${sheetId}`);
+      router.push(`/result/${data.submissionId}`);
+    } else {
+      alert(data.error || "خطا در ثبت پاسخ‌برگ");
+    }
     setLoading(false);
   };
 
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 p-6">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center font-bold">در حال بارگذاری پاسخ‌برگ...</div>;
 
-  // ۱. ساخت دسته‌های ۱۰ تایی از سوالات
+  // دسته‌بندی ۱۰ تایی
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -69,7 +93,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     blocks.push(chunk);
   }
 
-  // ۲. الگوریتم چیدمان عمودی و ستونی کنکوری
+  // الگوریتم چیدمان عمودی و ستونی کنکوری
   const totalBlocks = blocks.length;
   const numRows = Math.max(1, Math.ceil(totalBlocks / maxCols));
 
@@ -90,7 +114,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-16">
       
-      {/* هدر چسبان و شناور بالای صفحه (Sticky Header) */}
+      {/* هدر چسبان */}
       <div className="sticky top-0 z-50 bg-blue-600/95 backdrop-blur text-white px-6 py-4 shadow-lg border-b border-blue-500 mb-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
@@ -105,7 +129,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
         </div>
       </div>
 
-      {/* شبکه پاسخ‌برگ آزاد (بدون باکس محدودکننده و اسکرول داخلی) */}
+      {/* شبکه پاسخ‌برگ با فاصله نزدیک شماره و گزینه‌ها */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6" dir="ltr">
         <div 
           className="grid gap-6 items-start"
@@ -120,8 +144,9 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
                 </div>
                 
                 {block.map(q => (
-                  <div key={q} className="flex items-center justify-between gap-3 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
-                    <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-8 font-mono text-left">
+                  <div key={q} className="flex items-center justify-start gap-4 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
+                    {/* شماره سوال دقیقاً چسبیده به گزینه‌ها */}
+                    <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-9 font-mono text-right dir-ltr">
                       {toFaNum(q)}_
                     </span>
                     <div className="flex gap-2">
