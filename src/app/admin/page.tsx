@@ -274,6 +274,7 @@ export default function AdminDashboard() {
             {/* لیست کاربران */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border dark:border-gray-700 h-fit">
               <h2 className="text-lg font-bold mb-4">لیست کاربران</h2>
+              {/* لیست کاربران با نشان مدیر */}
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                 {users.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-4">هیچ کاربری یافت نشد.</p>
@@ -283,8 +284,15 @@ export default function AdminDashboard() {
                       key={u.id} 
                       onClick={() => setSelectedUser(u)} 
                       className={`w-full text-right p-3 rounded-lg border transition ${selectedUser?.id === u.id ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/30 dark:border-blue-500' : 'hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-700'}`}>
-                      <div className="font-bold">
-                        {u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}` : 'کاربر بدون نام'}
+                      <div className="font-bold flex items-center justify-between">
+                        <span>
+                          {u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}` : 'کاربر بدون نام'}
+                        </span>
+                        {u.role === 'admin' && (
+                          <span className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                            مدیر
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">{u.email}</div>
                     </button>
