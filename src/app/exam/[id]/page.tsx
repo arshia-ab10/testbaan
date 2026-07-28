@@ -18,7 +18,10 @@ export default function ExamPage({ params }: { params: { id: string } }) {
     const res = await fetch("/api/student/exam", {
       method: "POST", body: JSON.stringify({ sheetId: params.id, userAnswers: answers })
     });
-    const data = await res.json();
+    
+    // اضافه شدن as any برای رفع ارور تایپ‌اسکریپت
+    const data = (await res.json()) as any; 
+    
     if (data.success) router.push(`/result/${data.submissionId}`);
   };
 
