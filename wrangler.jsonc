@@ -42,7 +42,7 @@
 			"database_name": "testbaan-db",
 			"database_id": "8a4de652-f856-479e-9547-4820f177d424"
 		}
-	]
+	],
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -60,5 +60,7 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
+  "vars": {
+    "GOOGLE_CLIENT_ID": "765863500546-a8s2p2cfhtobs68o5am0fv9tt9nm1b0e.apps.googleusercontent.com"
+  }
 }
