@@ -3,182 +3,149 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { toFaNum } from "@/lib/utils";
 
+const FLAG_COLORS = ['bg-gray-200 dark:bg-gray-700', 'bg-red-400', 'bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400'];
+
 export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const resolvedParams = params instanceof Promise ? use(params) : params;
-  const sheetId = resolvedParams?.id;
+  const sheetId = (params instanceof Promise ? use(params) : params)?.id;
+  const router = useRouter();
 
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [flags, setFlags] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [maxCols, setMaxCols] = useState(4);
-  const router = useRouter();
-
-  // ۱. خواندن پیش‌نویس پاسخ‌ها از LocalStorage در صورت وجود (جلوگیری از پریدن داده با رفرش)
-  useEffect(() => {
-    if (!sheetId) return;
-    const savedDraft = localStorage.getItem(`testbaan_draft_${sheetId}`);
-    if (savedDraft) {
-      try {
-        setAnswers(JSON.parse(savedDraft));
-      } catch (e) {
-        console.error("Failed to parse saved draft", e);
-      }
-    }
-  }, [sheetId]);
-
-  // ۲. ذخیره خودکار پاسخ‌ها در LocalStorage با هر کلیک کاربر
-  useEffect(() => {
-    if (!sheetId || Object.keys(answers).length === 0) return;
-    localStorage.setItem(`testbaan_draft_${sheetId}`, JSON.stringify(answers));
-  }, [answers, sheetId]);
-
-  // محاسبه هوشمند تعداد ستون‌های مجاز بر اساس عرض مانیتور
-  useEffect(() => {
-    const updateCols = () => {
-      const w = window.innerWidth;
-      if (w < 640) setMaxCols(1);
-      else if (w < 768) setMaxCols(2);
-      else if (w < 1024) setMaxCols(3);
-      else setMaxCols(4);
-    };
-    updateCols();
-    window.addEventListener('resize', updateCols);
-    return () => window.removeEventListener('resize', updateCols);
-  }, []);
+  
+  // مودال چک آنی
+  const [checkModal, setCheckModal] = useState<{qNum: number, isCorrect: boolean, correctOpt: number, showCorrect: boolean} | null>(null);
 
   useEffect(() => {
     if (!sheetId) return;
-    fetch("/api/student/exam", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "fetch", sheetId })
-    })
+    // اسکرول به سوال خاص (در صورت ارجاع از کارنامه)
+    const hash = window.location.hash;
+    if (hash) setTimeout(() => document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+
+    fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "fetch", sheetId }) })
       .then(res => res.json())
       .then((data: any) => {
-        if (data.error) setErrorMsg(data.error);
-        else setExam(data);
+        setExam(data.exam);
+        // ادغام دیتای ابری و لوکال استوریج
+        const localAns = JSON.parse(localStorage.getItem(`ans_${sheetId}`) || '{}');
+        const localFlags = JSON.parse(localStorage.getItem(`flags_${sheetId}`) || '{}');
+        const cloudAns = data.progress?.draft_answers ? JSON.parse(data.progress.draft_answers) : {};
+        const cloudFlags = data.progress?.question_flags ? JSON.parse(data.progress.question_flags) : {};
+        
+        setAnswers({ ...cloudAns, ...localAns });
+        setFlags({ ...cloudFlags, ...localFlags });
       });
   }, [sheetId]);
 
-  const handleSubmit = async () => {
-    if (!confirm("آیا از ثبت نهایی پاسخ‌برگ مطمئن هستید؟")) return;
+  useEffect(() => {
+    if (!exam) return;
+    localStorage.setItem(`ans_${sheetId}`, JSON.stringify(answers));
+    localStorage.setItem(`flags_${sheetId}`, JSON.stringify(flags));
+  }, [answers, flags, sheetId, exam]);
+
+  const handleSaveCloud = async () => {
     setLoading(true);
-    const res = await fetch("/api/student/exam", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers })
-    });
-    const data = (await res.json()) as any;
-    if (data.success) {
-      // پاک کردن پیش‌نویس LocalStorage پس از ثبت نهایی موفق
-      localStorage.removeItem(`testbaan_draft_${sheetId}`);
-      router.push(`/result/${data.submissionId}`);
-    } else {
-      alert(data.error || "خطا در ثبت پاسخ‌برگ");
-    }
+    await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "save_cloud", sheetId, userAnswers: answers, questionFlags: flags }) });
+    alert("پیش‌نویس و رنگ‌ها در فضای ابری ذخیره شد.");
     setLoading(false);
   };
 
-  if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500 p-6">{errorMsg}</div>;
-  if (!exam) return <div className="min-h-screen flex items-center justify-center font-bold">در حال بارگذاری پاسخ‌برگ...</div>;
+  const handleSubmit = async () => {
+    if (!confirm("ثبت نهایی و صدور کارنامه؟")) return;
+    setLoading(true);
+    const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers, questionFlags: flags }) });
+    const data = await res.json() as any;
+    if (data.success) {
+      localStorage.removeItem(`ans_${sheetId}`);
+      router.push(`/dashboard#sheet-${sheetId}`);
+    } else alert(data.error);
+    setLoading(false);
+  };
 
-  // دسته‌بندی ۱۰ تایی
+  const handleInstantCheck = async (qNum: number) => {
+    if (!answers[qNum]) return alert("اول به سوال پاسخ دهید!");
+    const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "instant_check", sheetId, qNum, userAnswers: answers }) });
+    const data = await res.json() as any;
+    setCheckModal({ qNum, isCorrect: data.isCorrect, correctOpt: data.correctOpt, showCorrect: false });
+  };
+
+  const cycleFlag = (qNum: number) => {
+    setFlags(prev => ({ ...prev, [qNum]: ((prev[qNum] || 0) + 1) % FLAG_COLORS.length }));
+  };
+
+  if (!exam) return <div className="min-h-screen flex items-center justify-center">بارگذاری...</div>;
+
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
-    for (let j = i; j < Math.min(i + 10, exam.total_questions); j++) {
-      chunk.push(exam.start_question_number + j);
-    }
+    for (let j = i; j < Math.min(i + 10, exam.total_questions); j++) { chunk.push(exam.start_question_number + j); }
     blocks.push(chunk);
   }
 
-  // الگوریتم چیدمان عمودی و ستونی کنکوری
-  const totalBlocks = blocks.length;
-  const numRows = Math.max(1, Math.ceil(totalBlocks / maxCols));
-
-  const orderedBlocks: (number[] | null)[] = [];
-  for (let r = 0; r < numRows; r++) {
-    for (let c = 0; c < maxCols; c++) {
-      const blockIndex = c * numRows + r;
-      if (blockIndex < totalBlocks) {
-        orderedBlocks.push(blocks[blockIndex]);
-      } else {
-        orderedBlocks.push(null);
-      }
-    }
-  }
-
-  const answeredCount = Object.values(answers).filter(val => val > 0).length;
-
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-16">
-      
-      {/* هدر چسبان */}
-      <div className="sticky top-0 z-50 bg-blue-600/95 backdrop-blur text-white px-6 py-4 shadow-lg border-b border-blue-500 mb-8">
+      <div className="sticky top-0 z-40 bg-blue-600/95 backdrop-blur text-white px-6 py-4 shadow-lg border-b border-blue-500 mb-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">{exam.title}</h1>
-            <p className="text-xs text-blue-100 mt-1">
-              پاسخ داده شده: {toFaNum(answeredCount)} از {toFaNum(exam.total_questions)}
-            </p>
+          <h1 className="text-2xl font-bold">{exam.title}</h1>
+          <div className="flex gap-2">
+            <button onClick={handleSaveCloud} disabled={loading} className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-xl font-bold text-sm transition">ذخیره ابری ☁️</button>
+            <button onClick={handleSubmit} disabled={loading} className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-2 rounded-xl font-bold shadow transition">ثبت نهایی</button>
           </div>
-          <button onClick={handleSubmit} disabled={loading} className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-2.5 rounded-xl font-bold shadow transition">
-            {loading ? 'در حال ثبت...' : 'پایان و ثبت نهایی'}
-          </button>
         </div>
       </div>
 
-      {/* شبکه پاسخ‌برگ با فاصله نزدیک شماره و گزینه‌ها */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6" dir="ltr">
-        <div 
-          className="grid gap-6 items-start"
-          style={{ gridTemplateColumns: `repeat(${maxCols}, minmax(0, 1fr))` }}
-        >
-          {orderedBlocks.map((block, idx) => {
-            if (!block) return <div key={`empty-${idx}`} />;
-            return (
-              <div key={idx} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-                <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 text-center border-b dark:border-gray-700 pb-2">
-                  سوالات {toFaNum(block[0])} تا {toFaNum(block[block.length - 1])}
-                </div>
-                
-                {block.map(q => (
-                  <div key={q} className="flex items-center justify-start gap-4 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
-                    {/* شماره سوال دقیقاً چسبیده به گزینه‌ها */}
-                    <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-9 font-mono text-right dir-ltr">
-                      {toFaNum(q)}_
-                    </span>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4].map(opt => {
-                        const isSelected = answers[q] === opt;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => setAnswers(prev => ({
-                              ...prev,
-                              [q]: prev[q] === opt ? 0 : opt
-                            }))}
-                            className={`w-8 h-8 rounded-full font-bold text-sm border-2 transition-all flex items-center justify-center ${
-                              isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow scale-105'
-                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'
-                            }`}
-                          >
-                            {toFaNum(opt)}
-                          </button>
-                        );
-                      })}
-                    </div>
+      <div className="max-w-7xl mx-auto px-4" dir="ltr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
+          {blocks.map((block, idx) => (
+            <div key={idx} className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
+              {block.map(q => (
+                <div key={q} id={`q-${q}`} className="flex items-center justify-between gap-2 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
+                  {/* دکمه رنگ‌بندی */}
+                  <button onClick={() => cycleFlag(q)} className={`w-3 h-3 rounded-full flex-shrink-0 ${FLAG_COLORS[flags[q] || 0]}`} />
+                  
+                  {/* شماره سوال (قابل کلیک برای چک آنی) */}
+                  <button onClick={() => handleInstantCheck(q)} className="font-bold text-sm text-gray-600 dark:text-gray-300 w-7 font-mono text-right hover:text-blue-500 cursor-pointer">
+                    {toFaNum(q)}_
+                  </button>
+                  
+                  <div className="flex gap-1.5">
+                    {[1, 2, 3, 4].map(opt => (
+                      <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q]: prev[q] === opt ? 0 : opt }))}
+                        className={`w-8 h-8 rounded-full font-bold text-sm border-2 transition-all flex items-center justify-center ${answers[q] === opt ? 'bg-blue-600 text-white border-blue-600 scale-105' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'}`}>
+                        {toFaNum(opt)}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            );
-          })}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* مودال چک آنی */}
+      {checkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center border dark:border-gray-700">
+            <h3 className="text-xl font-bold mb-4">بررسی سوال {toFaNum(checkModal.qNum)}</h3>
+            {checkModal.isCorrect ? (
+              <div className="text-green-600 text-2xl font-black mb-6">✅ پاسخ شما صحیح است!</div>
+            ) : (
+              <div className="text-red-600 text-2xl font-black mb-6">❌ پاسخ شما غلط است!</div>
+            )}
+            
+            {!checkModal.isCorrect && !checkModal.showCorrect && (
+              <button onClick={() => setCheckModal({...checkModal, showCorrect: true})} className="text-blue-600 underline text-sm mb-4 block w-full">نمایش گزینه صحیح</button>
+            )}
+            {checkModal.showCorrect && (
+              <div className="bg-green-100 text-green-800 p-3 rounded-xl font-bold mb-4">گزینه صحیح: {toFaNum(checkModal.correctOpt)}</div>
+            )}
+            
+            <button onClick={() => setCheckModal(null)} className="w-full bg-gray-200 dark:bg-gray-700 p-3 rounded-xl font-bold">بستن</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

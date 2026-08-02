@@ -8,24 +8,25 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: 'غیرمجاز' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const subId = searchParams.get('id');
+    const sheetId = searchParams.get('sheetId');
 
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
 
+    // دریافت تمام ورژن‌های کارنامه برای این پاسخ‌برگ
     const query = `
-      SELECT s.score_percentage, s.user_answers, a.correct_keys, a.title, a.start_question_number, a.total_questions
+      SELECT s.id, s.score_percentage, s.user_answers, s.version, s.completed_at, 
+             a.correct_keys, a.title, a.start_question_number, a.total_questions
       FROM user_submissions s 
       JOIN answer_sheets a ON s.answer_sheet_id = a.id 
-      WHERE s.id = ? AND s.user_id = ?
+      WHERE a.id = ? AND s.user_id = ?
+      ORDER BY s.version DESC
     `;
-    const { results } = await db.prepare(query).bind(subId, user.id).all();
+    const { results } = await db.prepare(query).bind(sheetId, user.id).all();
 
-    if (!results || results.length === 0) {
-      return NextResponse.json({ error: 'کارنامه یافت نشد' }, { status: 404 });
-    }
+    if (!results || results.length === 0) return NextResponse.json({ error: 'کارنامه یافت نشد' }, { status: 404 });
 
-    return NextResponse.json(results[0], { status: 200 });
+    return NextResponse.json(results, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
