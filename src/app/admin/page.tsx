@@ -38,11 +38,15 @@ export default function AdminDashboard() {
     const updateLayout = () => {
       if (containerRef.current && totalQuestions > 0) {
         const width = containerRef.current.clientWidth;
-        let calculatedCols = Math.floor(width / 280);
+        const firstBlock = document.getElementById("admin-block-0");
+        const blockWidth = firstBlock ? firstBlock.offsetWidth : 250;
+        const gap = 24; 
+        let calculatedCols = Math.floor((width + gap) / (blockWidth + gap));
         setCols(calculatedCols > 0 ? calculatedCols : 1);
       }
     };
-    const timer = setTimeout(updateLayout, 50);
+    updateLayout();
+    const timer = setTimeout(updateLayout, 100);
     window.addEventListener('resize', updateLayout);
     return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
   }, [totalQuestions, activeTab, selectedBook, editingSheetId]);
@@ -121,8 +125,7 @@ export default function AdminDashboard() {
   }
 
   const adminTotalBlocks = adminBlocks.length;
-  const rawRows = adminTotalBlocks / cols;
-  const adminNumRows = Math.max(1, Math.ceil(Number(rawRows.toFixed(4))));
+  const adminNumRows = Math.max(1, Math.ceil(adminTotalBlocks / cols));
 
   const adminOrderedBlocks: (number[] | null)[] = [];
   for (let r = 0; r < adminNumRows; r++) {
@@ -198,18 +201,15 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="mt-8 bg-gray-50/50 dark:bg-gray-900/30 p-6 rounded-3xl border dark:border-gray-700" dir="ltr" ref={containerRef}>
-                      {/* حذف CSS Grid Flow اضافی */}
                       <div 
                         className="grid gap-6 items-start"
                         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
                       >
                         {adminOrderedBlocks.map((block, bIdx) => {
                           if (!block) return <div key={`admin-empty-${bIdx}`} />;
+                          const blockId = block[0] === startNum ? "admin-block-0" : undefined;
                           return (
-                            <div key={bIdx} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-                              <span className="text-xs font-mono text-gray-500 font-bold text-center border-b dark:border-gray-700 pb-2">
-                                {toFaNum(block[0])} - {toFaNum(block[block.length - 1])}
-                              </span>
+                            <div key={bIdx} id={blockId} className="w-max mx-auto bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
                               {block.map(qNum => (
                                 <div key={qNum} className="flex items-center justify-start gap-4 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
                                   <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-9 font-mono text-right dir-ltr">

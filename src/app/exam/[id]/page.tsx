@@ -21,19 +21,6 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const router = useRouter();
 
   useEffect(() => {
-    const updateLayout = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.clientWidth;
-        let calculatedCols = Math.floor(width / 280);
-        setCols(calculatedCols > 0 ? calculatedCols : 1);
-      }
-    };
-    const timer = setTimeout(updateLayout, 50);
-    window.addEventListener('resize', updateLayout);
-    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
-  }, [exam]);
-
-  useEffect(() => {
     if (!sheetId) return;
     const hash = window.location.hash;
     if (hash) setTimeout(() => document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
@@ -58,6 +45,27 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     localStorage.setItem(`flags_${sheetId}`, JSON.stringify(flags));
   }, [answers, flags, sheetId, exam]);
 
+  // الگوریتم ریاضی شما برای اندازه‌گیری عرض بلوک ۱ و محاسبه ستون‌ها
+  useEffect(() => {
+    const updateLayout = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        const firstBlock = document.getElementById("block-0");
+        // اگر بلوک ۱ رندر شده بود عرض دقیقش رو بگیر، وگرنه ۲۵۰ در نظر بگیر
+        const blockWidth = firstBlock ? firstBlock.offsetWidth : 250;
+        const gap = 24; 
+        
+        let calculatedCols = Math.floor((containerWidth + gap) / (blockWidth + gap));
+        setCols(calculatedCols > 0 ? calculatedCols : 1);
+      }
+    };
+    
+    updateLayout();
+    const timer = setTimeout(updateLayout, 100);
+    window.addEventListener('resize', updateLayout);
+    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
+  }, [exam]);
+
   const handleSaveCloud = async () => {
     setLoading(true);
     await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "save_cloud", sheetId, userAnswers: answers, questionFlags: flags }) });
@@ -69,26 +77,18 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     if (!confirm("ثبت نهایی و صدور کارنامه؟")) return;
     setLoading(true);
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers, questionFlags: flags }) });
-    
-    // رفع ارور تایپ‌اسکریپت با افزودن `as any`
     const data = (await res.json()) as any;
-    
     if (data.success) {
       localStorage.removeItem(`ans_${sheetId}`);
       router.push(`/result/${data.submissionId}`);
-    } else {
-      alert(data.error);
-    }
+    } else alert(data.error);
     setLoading(false);
   };
 
   const handleInstantCheck = async (qNum: number) => {
     if (!answers[qNum]) return alert("اول به سوال پاسخ دهید!");
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "instant_check", sheetId, qNum, userAnswers: answers }) });
-    
-    // رفع ارور تایپ‌اسکریپت با افزودن `as any`
     const data = (await res.json()) as any;
-    
     setCheckModal({ qNum, isCorrect: data.isCorrect, correctOpt: data.correctOpt, showCorrect: false });
   };
 
@@ -99,6 +99,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری...</div>;
 
+  // ۱. ساخت دسته‌های ۱۰ تایی (حتی برای اعشار، یک دسته جدید می‌سازد)
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -106,10 +107,11 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     blocks.push(chunk);
   }
 
+  // ۲. محاسبه حداقل سطرهای لازم (رند به بالا)
   const totalBlocks = blocks.length;
-  const rawRows = totalBlocks / cols;
-  const numRows = Math.max(1, Math.ceil(Number(rawRows.toFixed(4))));
+  const numRows = Math.max(1, Math.ceil(totalBlocks / cols));
 
+  // ۳. چیدمان ستونی از چپ به راست در آرایه
   const orderedBlocks: (number[] | null)[] = [];
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -117,7 +119,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       if (blockIndex < totalBlocks) {
         orderedBlocks.push(blocks[blockIndex]);
       } else {
-        orderedBlocks.push(null);
+        orderedBlocks.push(null); // جای خالی برای پر کردن گرید
       }
     }
   }
@@ -140,18 +142,20 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       </div>
 
       <div className="max-w-7xl mx-auto px-4" dir="ltr" ref={containerRef}>
-        {/* حذف CSS Grid Flow اضافی برای اجرای درست الگوریتم JS */}
         <div 
           className="grid gap-6 items-start"
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
         >
           {orderedBlocks.map((block, idx) => {
             if (!block) return <div key={`empty-${idx}`} />;
+            
+            // تعیین id برای بلاک اول جهت محاسبه دقیق عرض در جاوااسکریپت
+            const blockId = block[0] === exam.start_question_number ? "block-0" : undefined;
+            
             return (
-              <div key={idx} className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-3xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-                <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 text-center border-b dark:border-gray-700 pb-2">
-                  سوالات {toFaNum(block[0])} تا {toFaNum(block[block.length - 1])}
-                </div>
+              // کلاس w-max و mx-auto برای عرض ثابت و فاصله مساوی بین ستون‌ها
+              <div key={idx} id={blockId} className="w-max mx-auto bg-white/90 dark:bg-gray-800/90 p-4 rounded-3xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
+                {/* هدر بازه سوالات کاملاً حذف شد */}
                 {block.map(q => (
                   <div key={q} id={`q-${q}`} className="flex items-center justify-between gap-3 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
                     <button onClick={() => cycleFlag(q)} className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${FLAG_COLORS[flags[q] || 0]}`} />
