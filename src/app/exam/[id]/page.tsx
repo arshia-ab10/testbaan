@@ -6,8 +6,9 @@ import { toFaNum } from "@/lib/utils";
 const FLAG_COLORS = ['bg-gray-200 dark:bg-gray-700', 'bg-red-400', 'bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400'];
 
 export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const sheetId = (params instanceof Promise ? use(params) : params)?.id;
   const router = useRouter();
+  const resolvedParams = params instanceof Promise ? use(params) : params;
+  const sheetId = resolvedParams?.id;
 
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -16,35 +17,28 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const [errorMsg, setErrorMsg] = useState("");
   const [checkModal, setCheckModal] = useState<{qNum: number, isCorrect: boolean, correctOpt: number, showCorrect: boolean} | null>(null);
 
-  // استیت‌ها و رفرنس برای الگوریتم چیدمان شما
-  const [numRows, setNumRows] = useState(1);
+  // استیت‌های الگوریتم ریاضی
+  const [cols, setCols] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ۱. پیاده‌سازی خط به خط الگوریتم ریاضی شما برای پیدا کردن حداقل سطرها
+  // محاسبه زنده تعداد ستون‌ها بر اساس عرض کانتینر
   useEffect(() => {
-    const calculateLayout = () => {
-      if (!exam || !containerRef.current) return;
-      
-      const totalBlocks = Math.ceil(exam.total_questions / 10);
-      const containerWidth = containerRef.current.clientWidth;
-      
-      // گرفتن عرض واقعی دسته اول (به علاوه فاصله ۲۴ پیکسلی)
-      const firstBlock = document.getElementById("block-0");
-      const blockWidth = firstBlock ? firstBlock.offsetWidth : 260;
-      const gap = 24; 
-      
-      // پیدا کردن تعداد ستون‌ها
-      let cols = Math.floor((containerWidth + gap) / (blockWidth + gap));
-      if (cols < 1) cols = 1;
-      
-      // تقسیم و پیدا کردن حداقل سطرها
-      const rows = Math.ceil(totalBlocks / cols);
-      setNumRows(Math.max(1, rows));
+    const updateLayout = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.clientWidth;
+        // عرض هر بلوک با فاصله‌ها حدود ۲۸۰ پیکسل است
+        let calculatedCols = Math.floor(width / 280);
+        setCols(calculatedCols > 0 ? calculatedCols : 1);
+      }
     };
 
-    setTimeout(calculateLayout, 100);
-    window.addEventListener('resize', calculateLayout);
-    return () => window.removeEventListener('resize', calculateLayout);
+    // یک تاخیر کوچک برای اطمینان از لود شدن کامل DOM
+    const timer = setTimeout(updateLayout, 50);
+    window.addEventListener('resize', updateLayout);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateLayout);
+    };
   }, [exam]);
 
   useEffect(() => {
@@ -105,6 +99,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری...</div>;
 
+  // ۱. ساخت دسته‌های ۱۰ تایی (رند به بالا)
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -112,12 +107,28 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     blocks.push(chunk);
   }
 
+  // ۲. محاسبه سطرها بر اساس ستون‌های مجاز (با رفع خطای اعشاری JS)
+  const totalBlocks = blocks.length;
+  const rawRows = totalBlocks / cols;
+  const numRows = Math.max(1, Math.ceil(Number(rawRows.toFixed(4))));
+
+  // ۳. چیدمان ستون به ستون
+  const orderedBlocks: (number[] | null)[] = [];
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const blockIndex = c * numRows + r;
+      if (blockIndex < totalBlocks) {
+        orderedBlocks.push(blocks[blockIndex]);
+      } else {
+        orderedBlocks.push(null);
+      }
+    }
+  }
+
   const answeredCount = Object.values(answers).filter(val => val > 0).length;
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-16">
-      
-      {/* هدر چسبان */}
       <div className="sticky top-0 z-40 bg-blue-600/95 backdrop-blur text-white px-6 py-4 shadow-lg border-b border-blue-500 mb-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
@@ -131,40 +142,41 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
         </div>
       </div>
 
-      {/* چیدمان آزاد پاسخ‌برگ (حذف باکس) */}
-      <div className="max-w-7xl mx-auto px-4" dir="ltr">
+      <div className="max-w-7xl mx-auto px-4" dir="ltr" ref={containerRef}>
         <div 
-          ref={containerRef}
           className="grid gap-6 items-start"
           style={{ 
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${numRows}, min-content)`, 
-            gridAutoFlow: 'column', 
-            gridAutoColumns: 'minmax(0, 1fr)' 
+            gridAutoFlow: 'column'
           }}
         >
-          {blocks.map((block, idx) => (
-            <div key={idx} id={`block-${idx}`} className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-3xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-              <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 text-center border-b dark:border-gray-700 pb-2">
-                سوالات {toFaNum(block[0])} تا {toFaNum(block[block.length - 1])}
-              </div>
-              {block.map(q => (
-                <div key={q} id={`q-${q}`} className="flex items-center justify-between gap-3 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
-                  <button onClick={() => cycleFlag(q)} className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${FLAG_COLORS[flags[q] || 0]}`} />
-                  <button onClick={() => handleInstantCheck(q)} className="font-bold text-sm text-gray-600 dark:text-gray-300 w-8 font-mono text-right hover:text-blue-500 cursor-pointer">
-                    {toFaNum(q)}_
-                  </button>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4].map(opt => (
-                      <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q]: prev[q] === opt ? 0 : opt }))}
-                        className={`w-8 h-8 rounded-full font-bold text-sm border-2 transition-all flex items-center justify-center ${answers[q] === opt ? 'bg-blue-600 text-white border-blue-600 scale-105 shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'}`}>
-                        {toFaNum(opt)}
-                      </button>
-                    ))}
-                  </div>
+          {orderedBlocks.map((block, idx) => {
+            if (!block) return <div key={`empty-${idx}`} />;
+            return (
+              <div key={idx} className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-3xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
+                <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 text-center border-b dark:border-gray-700 pb-2">
+                  سوالات {toFaNum(block[0])} تا {toFaNum(block[block.length - 1])}
                 </div>
-              ))}
-            </div>
-          ))}
+                {block.map(q => (
+                  <div key={q} id={`q-${q}`} className="flex items-center justify-between gap-3 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
+                    <button onClick={() => cycleFlag(q)} className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${FLAG_COLORS[flags[q] || 0]}`} />
+                    <button onClick={() => handleInstantCheck(q)} className="font-bold text-sm text-gray-600 dark:text-gray-300 w-8 font-mono text-right hover:text-blue-500 cursor-pointer">
+                      {toFaNum(q)}_
+                    </button>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4].map(opt => (
+                        <button key={opt} onClick={() => setAnswers(prev => ({ ...prev, [q]: prev[q] === opt ? 0 : opt }))}
+                          className={`w-8 h-8 rounded-full font-bold text-sm border-2 transition-all flex items-center justify-center ${answers[q] === opt ? 'bg-blue-600 text-white border-blue-600 scale-105 shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-500'}`}>
+                          {toFaNum(opt)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 

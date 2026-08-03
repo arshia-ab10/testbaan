@@ -27,35 +27,26 @@ export default function AdminDashboard() {
   const [keys, setKeys] = useState<Record<number, number>>({});
   const [fastPasteText, setFastPasteText] = useState("");
 
-  // استیت‌های الگوریتم شما برای پنل ادمین
-  const [numRows, setNumRows] = useState(1);
+  // استیت‌های الگوریتم ریاضی
+  const [cols, setCols] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchBooks(); fetchAllSheets(); fetchUsers(); }, []);
   useEffect(() => { if (selectedBook) fetchAnswerSheets(selectedBook.id); }, [selectedBook]);
   useEffect(() => { if (selectedUser) fetchPermissions(selectedUser.id); }, [selectedUser]);
 
-  // محاسبه الگوریتم ستونی شما در پنل ادمین
+  // محاسبه زنده ستون‌ها
   useEffect(() => {
-    const calculateLayout = () => {
-      if (!containerRef.current || totalQuestions <= 0) return;
-      const totalBlocks = Math.ceil(totalQuestions / 10);
-      const containerWidth = containerRef.current.clientWidth;
-      
-      const firstBlock = document.getElementById("admin-block-0");
-      const blockWidth = firstBlock ? firstBlock.offsetWidth : 260;
-      const gap = 24; 
-      
-      let cols = Math.floor((containerWidth + gap) / (blockWidth + gap));
-      if (cols < 1) cols = 1;
-      
-      const rows = Math.ceil(totalBlocks / cols);
-      setNumRows(Math.max(1, rows));
+    const updateLayout = () => {
+      if (containerRef.current && totalQuestions > 0) {
+        const width = containerRef.current.clientWidth;
+        let calculatedCols = Math.floor(width / 280);
+        setCols(calculatedCols > 0 ? calculatedCols : 1);
+      }
     };
-
-    setTimeout(calculateLayout, 100);
-    window.addEventListener('resize', calculateLayout);
-    return () => window.removeEventListener('resize', calculateLayout);
+    const timer = setTimeout(updateLayout, 50);
+    window.addEventListener('resize', updateLayout);
+    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
   }, [totalQuestions, activeTab, selectedBook, editingSheetId]);
 
   const fetchBooks = async () => { const res = await fetch("/api/books"); if (res.ok) setBooks(await res.json()); };
@@ -124,11 +115,28 @@ export default function AdminDashboard() {
     setUserPermissions(prev => prev.includes(sheetId) ? prev.filter(id => id !== sheetId) : [...prev, sheetId]);
   };
 
+  // الگوریتم چیدمان ستونی ادمین
   const adminBlocks: number[][] = [];
   for (let i = 0; i < totalQuestions; i += 10) {
     const chunk = [];
     for (let j = i; j < Math.min(i + 10, totalQuestions); j++) chunk.push(startNum + j);
     adminBlocks.push(chunk);
+  }
+
+  const adminTotalBlocks = adminBlocks.length;
+  const rawRows = adminTotalBlocks / cols;
+  const adminNumRows = Math.max(1, Math.ceil(Number(rawRows.toFixed(4))));
+
+  const adminOrderedBlocks: (number[] | null)[] = [];
+  for (let r = 0; r < adminNumRows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const blockIndex = c * adminNumRows + r;
+      if (blockIndex < adminTotalBlocks) {
+        adminOrderedBlocks.push(adminBlocks[blockIndex]);
+      } else {
+        adminOrderedBlocks.push(null);
+      }
+    }
   }
 
   return (
@@ -173,7 +181,6 @@ export default function AdminDashboard() {
               <button onClick={() => setSelectedBook(null)} className="bg-white dark:bg-gray-800 border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition">← بازگشت به مجموعه‌ها</button>
               
               <div className="grid md:grid-cols-3 gap-8">
-                {/* فرم ادمین */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border dark:border-gray-700 md:col-span-3">
                   <h3 className="text-xl font-bold mb-6 pb-2 border-b dark:border-gray-700">{editingSheetId ? 'ویرایش پاسخ‌برگ' : 'افزودن پاسخ‌برگ جدید'}</h3>
                   <form onSubmit={handleSaveSheet} className="space-y-6">
@@ -193,43 +200,49 @@ export default function AdminDashboard() {
                       <input type="text" placeholder="پیست کردن کلیدها..." className="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600 font-mono tracking-[0.2em]" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* شبکه کلیدهای ادمین با الگوریتم دقیقاً مشابه دانش‌آموز (آزاد و ستونی) */}
-                    <div className="mt-8 bg-gray-50/50 dark:bg-gray-900/30 p-6 rounded-3xl border dark:border-gray-700" dir="ltr">
+                    {/* شبکه کلیدهای ادمین با الگوریتم دقیق */}
+                    <div className="mt-8 bg-gray-50/50 dark:bg-gray-900/30 p-6 rounded-3xl border dark:border-gray-700" dir="ltr" ref={containerRef}>
                       <div 
-                        ref={containerRef}
                         className="grid gap-6 items-start"
-                        style={{ gridTemplateRows: `repeat(${numRows}, min-content)`, gridAutoFlow: 'column', gridAutoColumns: 'minmax(0, 1fr)' }}
+                        style={{ 
+                          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                          gridTemplateRows: `repeat(${adminNumRows}, min-content)`, 
+                          gridAutoFlow: 'column' 
+                        }}
                       >
-                        {adminBlocks.map((block, bIdx) => (
-                          <div id={`admin-block-${bIdx}`} key={bIdx} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-                            <span className="text-xs font-mono text-gray-500 font-bold text-center border-b dark:border-gray-700 pb-2">
-                              {toFaNum(block[0])} - {toFaNum(block[block.length - 1])}
-                            </span>
-                            {block.map(qNum => (
-                              <div key={qNum} className="flex items-center justify-start gap-4 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
-                                <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-9 font-mono text-right dir-ltr">
-                                  {toFaNum(qNum)}_
-                                </span>
-                                <div className="flex gap-2">
-                                  {[1, 2, 3, 4].map(opt => (
-                                    <button
-                                      key={opt}
-                                      type="button"
-                                      onClick={() => setKeys(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? 0 : opt }))}
-                                      className={`w-8 h-8 rounded-full text-sm font-bold border-2 transition-all flex items-center justify-center ${
-                                        keys[qNum] === opt
-                                          ? 'bg-emerald-600 text-white border-emerald-600 shadow scale-105'
-                                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-emerald-500'
-                                      }`}
-                                    >
-                                      {toFaNum(opt)}
-                                    </button>
-                                  ))}
+                        {adminOrderedBlocks.map((block, bIdx) => {
+                          if (!block) return <div key={`admin-empty-${bIdx}`} />;
+                          return (
+                            <div key={bIdx} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
+                              <span className="text-xs font-mono text-gray-500 font-bold text-center border-b dark:border-gray-700 pb-2">
+                                {toFaNum(block[0])} - {toFaNum(block[block.length - 1])}
+                              </span>
+                              {block.map(qNum => (
+                                <div key={qNum} className="flex items-center justify-start gap-4 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
+                                  <span className="font-bold text-sm text-gray-600 dark:text-gray-300 w-9 font-mono text-right dir-ltr">
+                                    {toFaNum(qNum)}_
+                                  </span>
+                                  <div className="flex gap-2">
+                                    {[1, 2, 3, 4].map(opt => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => setKeys(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? 0 : opt }))}
+                                        className={`w-8 h-8 rounded-full text-sm font-bold border-2 transition-all flex items-center justify-center ${
+                                          keys[qNum] === opt
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow scale-105'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-emerald-500'
+                                        }`}
+                                      >
+                                        {toFaNum(opt)}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -240,7 +253,6 @@ export default function AdminDashboard() {
                   </form>
                 </div>
 
-                {/* لیست پاسخ‌برگ‌ها */}
                 <div className="md:col-span-3 space-y-4">
                   <h3 className="text-xl font-bold mb-4">پاسخ‌برگ‌های این مجموعه</h3>
                   <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
