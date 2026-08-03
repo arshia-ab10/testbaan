@@ -27,7 +27,6 @@ export default function AdminDashboard() {
   const [keys, setKeys] = useState<Record<number, number>>({});
   const [fastPasteText, setFastPasteText] = useState("");
 
-  // استیت‌های الگوریتم ریاضی
   const [cols, setCols] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +34,6 @@ export default function AdminDashboard() {
   useEffect(() => { if (selectedBook) fetchAnswerSheets(selectedBook.id); }, [selectedBook]);
   useEffect(() => { if (selectedUser) fetchPermissions(selectedUser.id); }, [selectedUser]);
 
-  // محاسبه زنده ستون‌ها
   useEffect(() => {
     const updateLayout = () => {
       if (containerRef.current && totalQuestions > 0) {
@@ -115,7 +113,6 @@ export default function AdminDashboard() {
     setUserPermissions(prev => prev.includes(sheetId) ? prev.filter(id => id !== sheetId) : [...prev, sheetId]);
   };
 
-  // الگوریتم چیدمان ستونی ادمین
   const adminBlocks: number[][] = [];
   for (let i = 0; i < totalQuestions; i += 10) {
     const chunk = [];
@@ -200,15 +197,11 @@ export default function AdminDashboard() {
                       <input type="text" placeholder="پیست کردن کلیدها..." className="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600 font-mono tracking-[0.2em]" value={fastPasteText} onChange={e => handleFastPaste(e.target.value)} />
                     </div>
 
-                    {/* شبکه کلیدهای ادمین با الگوریتم دقیق */}
                     <div className="mt-8 bg-gray-50/50 dark:bg-gray-900/30 p-6 rounded-3xl border dark:border-gray-700" dir="ltr" ref={containerRef}>
+                      {/* حذف CSS Grid Flow اضافی */}
                       <div 
                         className="grid gap-6 items-start"
-                        style={{ 
-                          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                          gridTemplateRows: `repeat(${adminNumRows}, min-content)`, 
-                          gridAutoFlow: 'column' 
-                        }}
+                        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
                       >
                         {adminOrderedBlocks.map((block, bIdx) => {
                           if (!block) return <div key={`admin-empty-${bIdx}`} />;

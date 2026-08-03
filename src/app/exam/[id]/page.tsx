@@ -6,7 +6,6 @@ import { toFaNum } from "@/lib/utils";
 const FLAG_COLORS = ['bg-gray-200 dark:bg-gray-700', 'bg-red-400', 'bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400'];
 
 export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const router = useRouter();
   const resolvedParams = params instanceof Promise ? use(params) : params;
   const sheetId = resolvedParams?.id;
 
@@ -17,28 +16,21 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const [errorMsg, setErrorMsg] = useState("");
   const [checkModal, setCheckModal] = useState<{qNum: number, isCorrect: boolean, correctOpt: number, showCorrect: boolean} | null>(null);
 
-  // استیت‌های الگوریتم ریاضی
   const [cols, setCols] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  // محاسبه زنده تعداد ستون‌ها بر اساس عرض کانتینر
   useEffect(() => {
     const updateLayout = () => {
       if (containerRef.current) {
         const width = containerRef.current.clientWidth;
-        // عرض هر بلوک با فاصله‌ها حدود ۲۸۰ پیکسل است
         let calculatedCols = Math.floor(width / 280);
         setCols(calculatedCols > 0 ? calculatedCols : 1);
       }
     };
-
-    // یک تاخیر کوچک برای اطمینان از لود شدن کامل DOM
     const timer = setTimeout(updateLayout, 50);
     window.addEventListener('resize', updateLayout);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updateLayout);
-    };
+    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
   }, [exam]);
 
   useEffect(() => {
@@ -77,18 +69,26 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     if (!confirm("ثبت نهایی و صدور کارنامه؟")) return;
     setLoading(true);
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers, questionFlags: flags }) });
-    const data = await res.json() as any;
+    
+    // رفع ارور تایپ‌اسکریپت با افزودن `as any`
+    const data = (await res.json()) as any;
+    
     if (data.success) {
       localStorage.removeItem(`ans_${sheetId}`);
       router.push(`/result/${data.submissionId}`);
-    } else alert(data.error);
+    } else {
+      alert(data.error);
+    }
     setLoading(false);
   };
 
   const handleInstantCheck = async (qNum: number) => {
     if (!answers[qNum]) return alert("اول به سوال پاسخ دهید!");
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "instant_check", sheetId, qNum, userAnswers: answers }) });
-    const data = await res.json() as any;
+    
+    // رفع ارور تایپ‌اسکریپت با افزودن `as any`
+    const data = (await res.json()) as any;
+    
     setCheckModal({ qNum, isCorrect: data.isCorrect, correctOpt: data.correctOpt, showCorrect: false });
   };
 
@@ -99,7 +99,6 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">{errorMsg}</div>;
   if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری...</div>;
 
-  // ۱. ساخت دسته‌های ۱۰ تایی (رند به بالا)
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -107,12 +106,10 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     blocks.push(chunk);
   }
 
-  // ۲. محاسبه سطرها بر اساس ستون‌های مجاز (با رفع خطای اعشاری JS)
   const totalBlocks = blocks.length;
   const rawRows = totalBlocks / cols;
   const numRows = Math.max(1, Math.ceil(Number(rawRows.toFixed(4))));
 
-  // ۳. چیدمان ستون به ستون
   const orderedBlocks: (number[] | null)[] = [];
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -143,13 +140,10 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       </div>
 
       <div className="max-w-7xl mx-auto px-4" dir="ltr" ref={containerRef}>
+        {/* حذف CSS Grid Flow اضافی برای اجرای درست الگوریتم JS */}
         <div 
           className="grid gap-6 items-start"
-          style={{ 
-            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${numRows}, min-content)`, 
-            gridAutoFlow: 'column'
-          }}
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
         >
           {orderedBlocks.map((block, idx) => {
             if (!block) return <div key={`empty-${idx}`} />;
