@@ -5,9 +5,9 @@ import { toFaNum } from "@/lib/utils";
 
 const FLAG_COLORS = ['bg-gray-200 dark:bg-gray-700', 'bg-red-400', 'bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400'];
 
-export default function ExamPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const resolvedParams = params instanceof Promise ? use(params) : params;
-  const sheetId = resolvedParams?.id;
+export default function ExamPage({ params }: { params: Promise<{ id: string }> }) {
+  // استفاده از روش اصولی Next.js 15 برای اطمینان از مقدار گرفتن پارامتر
+  const { id: sheetId } = use(params);
 
   const [exam, setExam] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -19,6 +19,25 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   const [cols, setCols] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const updateLayout = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.clientWidth;
+        const firstBlock = document.getElementById("block-0");
+        const blockWidth = firstBlock ? firstBlock.offsetWidth : 250;
+        const gap = 24; 
+        
+        let calculatedCols = Math.floor((width + gap) / (blockWidth + gap));
+        setCols(calculatedCols > 0 ? calculatedCols : 1);
+      }
+    };
+
+    updateLayout();
+    const timer = setTimeout(updateLayout, 100);
+    window.addEventListener('resize', updateLayout);
+    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
+  }, [exam]);
 
   useEffect(() => {
     if (!sheetId) return;
@@ -34,8 +53,9 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
         const localFlags = JSON.parse(localStorage.getItem(`flags_${sheetId}`) || '{}');
         const cloudAns = data.progress?.draft_answers ? JSON.parse(data.progress.draft_answers) : {};
         const cloudFlags = data.progress?.question_flags ? JSON.parse(data.progress.question_flags) : {};
-        setAnswers({ ...cloudAns, ...localAns });
-        setFlags({ ...cloudFlags, ...localFlags });
+        // کلود الویت دارد به لوکال ها
+        setAnswers({ ...localAns, ...cloudAns });
+        setFlags({ ...localFlags, ...cloudFlags });
       });
   }, [sheetId]);
 
@@ -44,27 +64,6 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     localStorage.setItem(`ans_${sheetId}`, JSON.stringify(answers));
     localStorage.setItem(`flags_${sheetId}`, JSON.stringify(flags));
   }, [answers, flags, sheetId, exam]);
-
-  // الگوریتم ریاضی شما برای اندازه‌گیری عرض بلوک ۱ و محاسبه ستون‌ها
-  useEffect(() => {
-    const updateLayout = () => {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth;
-        const firstBlock = document.getElementById("block-0");
-        // اگر بلوک ۱ رندر شده بود عرض دقیقش رو بگیر، وگرنه ۲۵۰ در نظر بگیر
-        const blockWidth = firstBlock ? firstBlock.offsetWidth : 250;
-        const gap = 24; 
-        
-        let calculatedCols = Math.floor((containerWidth + gap) / (blockWidth + gap));
-        setCols(calculatedCols > 0 ? calculatedCols : 1);
-      }
-    };
-    
-    updateLayout();
-    const timer = setTimeout(updateLayout, 100);
-    window.addEventListener('resize', updateLayout);
-    return () => { clearTimeout(timer); window.removeEventListener('resize', updateLayout); };
-  }, [exam]);
 
   const handleSaveCloud = async () => {
     setLoading(true);
@@ -79,8 +78,9 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers, questionFlags: flags }) });
     const data = (await res.json()) as any;
     if (data.success) {
+      // پاک کردن لوکال استوریج تا دفعه بعد مستقیما از کلود (که ویرایش شده) خوانده شود
       localStorage.removeItem(`ans_${sheetId}`);
-      router.push(`/result/${data.submissionId}`);
+      router.push(`/result/${sheetId}`);
     } else alert(data.error);
     setLoading(false);
   };
@@ -97,9 +97,8 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
   };
 
   if (errorMsg) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">{errorMsg}</div>;
-  if (!exam) return <div className="min-h-screen flex items-center justify-center">در حال بارگذاری...</div>;
+  if (!exam) return <div className="min-h-screen flex items-center justify-center font-bold">در حال بارگذاری...</div>;
 
-  // ۱. ساخت دسته‌های ۱۰ تایی (حتی برای اعشار، یک دسته جدید می‌سازد)
   const blocks: number[][] = [];
   for (let i = 0; i < exam.total_questions; i += 10) {
     const chunk = [];
@@ -107,11 +106,9 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
     blocks.push(chunk);
   }
 
-  // ۲. محاسبه حداقل سطرهای لازم (رند به بالا)
   const totalBlocks = blocks.length;
   const numRows = Math.max(1, Math.ceil(totalBlocks / cols));
 
-  // ۳. چیدمان ستونی از چپ به راست در آرایه
   const orderedBlocks: (number[] | null)[] = [];
   for (let r = 0; r < numRows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -119,7 +116,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
       if (blockIndex < totalBlocks) {
         orderedBlocks.push(blocks[blockIndex]);
       } else {
-        orderedBlocks.push(null); // جای خالی برای پر کردن گرید
+        orderedBlocks.push(null);
       }
     }
   }
@@ -148,14 +145,9 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> |
         >
           {orderedBlocks.map((block, idx) => {
             if (!block) return <div key={`empty-${idx}`} />;
-            
-            // تعیین id برای بلاک اول جهت محاسبه دقیق عرض در جاوااسکریپت
             const blockId = block[0] === exam.start_question_number ? "block-0" : undefined;
-            
             return (
-              // کلاس w-max و mx-auto برای عرض ثابت و فاصله مساوی بین ستون‌ها
               <div key={idx} id={blockId} className="w-max mx-auto bg-white/90 dark:bg-gray-800/90 p-4 rounded-3xl border dark:border-gray-700 shadow-sm flex flex-col gap-2.5">
-                {/* هدر بازه سوالات کاملاً حذف شد */}
                 {block.map(q => (
                   <div key={q} id={`q-${q}`} className="flex items-center justify-between gap-3 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition">
                     <button onClick={() => cycleFlag(q)} className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${FLAG_COLORS[flags[q] || 0]}`} />

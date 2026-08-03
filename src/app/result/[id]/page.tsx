@@ -3,20 +3,24 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { toFaNum } from "@/lib/utils";
 
-export default function ResultPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
-  const sheetId = (params instanceof Promise ? use(params) : params)?.id;
+export default function ResultPage({ params }: { params: Promise<{ id: string }> }) {
+  // گرفتن اصولی آیدی صفحه
+  const { id: sheetId } = use(params);
+
   const [versions, setVersions] = useState<any[]>([]);
   const [selectedV, setSelectedV] = useState<number>(0);
-  const [showCorrect, setShowCorrect] = useState(true);
+  
+  // تغییر به false تا پیشفرض غیرفعال باشد
+  const [showCorrect, setShowCorrect] = useState(false);
 
   useEffect(() => {
     if (!sheetId) return;
-    fetch(`/api/student/result?sheetId=${sheetId}`).then(res => res.json()).then(data => {
+    fetch(`/api/student/result?sheetId=${sheetId}`).then(res => res.json()).then((data: any) => {
       if(Array.isArray(data)) setVersions(data);
     });
   }, [sheetId]);
 
-  if (!versions.length) return <div className="text-center mt-20 font-bold">در حال بارگذاری...</div>;
+  if (!versions.length) return <div className="text-center mt-20 font-bold">در حال بارگذاری کارنامه...</div>;
 
   const result = versions[selectedV];
   const userAns = JSON.parse(result.user_answers || '{}');
@@ -50,7 +54,7 @@ export default function ResultPage({ params }: { params: Promise<{ id: string }>
             <span className="text-gray-600 bg-gray-200 px-4 py-2 rounded-xl">نزده: {toFaNum(emptyCount)}</span>
           </div>
 
-          <label className="flex items-center justify-center gap-3 cursor-pointer bg-gray-100 dark:bg-gray-700 w-fit mx-auto px-4 py-2 rounded-full">
+          <label className="flex items-center justify-center gap-3 cursor-pointer bg-gray-100 dark:bg-gray-700 w-fit mx-auto px-4 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
             <input type="checkbox" checked={showCorrect} onChange={e => setShowCorrect(e.target.checked)} className="w-5 h-5 accent-blue-600" />
             <span className="font-bold text-sm">نمایش کلیدهای صحیح در کارنامه</span>
           </label>

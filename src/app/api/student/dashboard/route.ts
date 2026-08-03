@@ -10,16 +10,20 @@ export async function GET() {
     const { env } = await getCloudflareContext();
     const db = (env as any).testbaan_db;
 
+    // اضافه شدن GROUP BY و توابع تجمیعی برای جلوگیری از تکرار پاسخ‌برگ‌ها
     const query = `
       SELECT 
         a.id as sheet_id, a.title as sheet_title, a.type, a.duration_minutes, a.total_questions,
         b.id as book_id, b.title as book_title, b.description as book_description,
-        s.id as submission_id, s.status, s.score_percentage
+        MAX(s.id) as submission_id, 
+        CASE WHEN COUNT(s.id) > 0 THEN 'completed' ELSE NULL END as status, 
+        MAX(s.score_percentage) as score_percentage
       FROM user_permissions p
       JOIN answer_sheets a ON p.answer_sheet_id = a.id
       JOIN books b ON a.book_id = b.id
       LEFT JOIN user_submissions s ON s.answer_sheet_id = a.id AND s.user_id = ?
       WHERE p.user_id = ?
+      GROUP BY a.id
       ORDER BY b.created_at DESC, a.created_at ASC
     `;
 
