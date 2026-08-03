@@ -1,62 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
-    <!-- گرادینت پس‌زمینه تیره و عمیق -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- گرادینت کهکشانی/عمیق به عنوان پس‌زمینه برای اینکه نئون جلوه کند -->
+    <linearGradient id="baseBg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E3A8A" />
       <stop offset="100%" stop-color="#020617" />
     </linearGradient>
-    <!-- گرادینت بدنه شیشه‌ای پاسخ‌برگ -->
-    <linearGradient id="glassCard" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.85" />
-      <stop offset="100%" stop-color="#334155" stop-opacity="0.45" />
-    </linearGradient>
-    <!-- انعکاس نور لبه بالای شیشه -->
-    <linearGradient id="glassSheen" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.3" />
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.05" />
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.2" />
-    </linearGradient>
-    <!-- گرادینت نئونی حرف T و تیک -->
-    <linearGradient id="tNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+    
+    <!-- گرادینت تیک درخشان (آبی آسمانی به سبز زمردی) -->
+    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="45%" stop-color="#3B82F6" />
       <stop offset="100%" stop-color="#10B981" />
     </linearGradient>
-    <!-- سایه نرم زیر کارت -->
-    <filter id="cardShadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.65"/>
-    </filter>
-    <!-- درخشش نئونی حرف T -->
-    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3" result="blur" />
+
+    <!-- افکت نئونی برای تابش درخشش از پشت آیکون -->
+    <filter id="ultraGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="blur1" />
+      <feGaussianBlur stdDeviation="8" result="blur2" />
       <feMerge>
-        <feMergeNode in="blur" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
   </defs>
 
-  <!-- کادر اصلی آیکون با گوشه‌های نرم اپل‌طور -->
-  <rect width="120" height="120" rx="30" fill="url(#bgGrad)" />
+  <!-- کادر اصلی که 100 درصد تصویر را پر می‌کند و به طور اتوماتیک گوشه‌های گرد می‌گیرد -->
+  <rect width="100" height="100" rx="22" fill="url(#baseBg)" stroke="#334155" stroke-width="2"/>
 
-  <!-- کارت شیشه‌ای پاسخ‌برگ -->
-  <rect x="16" y="20" width="88" height="82" rx="16" fill="url(#glassCard)" stroke="url(#glassSheen)" stroke-width="1.5" filter="url(#cardShadow)" />
-
-  <!-- ردیف‌های پاسخ‌برگ (۳ ردیف ۴ گزینه‌ای برای وضوح عالی در سایز کوچک) -->
-  <g stroke="#475569" stroke-width="1.8" fill="none">
-    <!-- ردیف ۱ -->
-    <circle cx="33" cy="38" r="4.5"/><circle cx="51" cy="38" r="4.5"/><circle cx="69" cy="38" r="4.5" fill="#38BDF8" stroke="#38BDF8"/><circle cx="87" cy="38" r="4.5"/>
-    <!-- ردیف ۲ -->
-    <circle cx="33" cy="58" r="4.5" fill="#F43F5E" stroke="#F43F5E"/><circle cx="51" cy="58" r="4.5"/><circle cx="69" cy="58" r="4.5"/><circle cx="87" cy="58" r="4.5"/>
-    <!-- ردیف ۳ -->
-    <circle cx="33" cy="78" r="4.5"/><circle cx="51" cy="78" r="4.5"/><circle cx="69" cy="78" r="4.5"/><circle cx="87" cy="78" r="4.5" fill="#10B981" stroke="#10B981"/>
+  <!-- 4 گزینه کلاسیک تست‌بان به شکل مینیمال با رنگ‌بندی کامل در پایین صفحه -->
+  <g filter="url(#softShadow)">
+    <circle cx="22" cy="78" r="5" fill="#EF4444" />
+    <circle cx="41" cy="78" r="5" fill="#F59E0B" />
+    <circle cx="60" cy="78" r="5" fill="#3B82F6" />
+    <circle cx="78" cy="78" r="5" fill="#10B981" />
   </g>
 
-  <!-- حرف T نئونی که بدنه آن تبدیل به تیک موفقیت می‌شود -->
-  <g filter="url(#neonGlow)">
-    <!-- بال بالای حرف T با قوس ظریف -->
-    <path d="M 26 31 Q 60 18 94 31" fill="none" stroke="url(#tNeon)" stroke-width="6.5" stroke-linecap="round" />
-    <!-- ستون حرف T به شکل تیک -->
-    <path d="M 60 25 V 78 L 81 55" fill="none" stroke="url(#tNeon)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- حرف T فوق العاده ضخیم و سیال ترکیب‌شده با تیک (وضوح بالا در 16پیکسل) -->
+  <g filter="url(#ultraGlow)">
+    <path d="M 18 30 Q 50 15 82 30" fill="none" stroke="url(#neonGradient)" stroke-width="11" stroke-linecap="round" />
+    <path d="M 50 22 V 88 L 84 45" fill="none" stroke="url(#neonGradient)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" />
   </g>
+  
+  <!-- یک هایلایت ریز سفید در بالای خط ضخیم تا حالت 3D بیشتری القا کند -->
+  <path d="M 50 22 V 86" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
 </svg>

@@ -1,50 +1,54 @@
 export default function Logo({ className = "w-10 h-10" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 120 120" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+    <svg 
+      viewBox="0 0 100 100" 
+      fill="none" 
+      className={`${className} transition-transform duration-500 hover:scale-105`} 
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
-        <linearGradient id="logoBg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="logoBaseBg" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#0F172A" />
+          <stop offset="50%" stopColor="#1E3A8A" />
           <stop offset="100%" stopColor="#020617" />
         </linearGradient>
-        <linearGradient id="logoGlass" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1E293B" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#334155" stopOpacity="0.45" />
-        </linearGradient>
-        <linearGradient id="logoSheen" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.3" />
-          <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.05" />
-          <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.2" />
-        </linearGradient>
-        <linearGradient id="logoTNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+        
+        <linearGradient id="logoNeonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#38BDF8" />
-          <stop offset="45%" stopColor="#3B82F6" />
           <stop offset="100%" stopColor="#10B981" />
         </linearGradient>
-        <filter id="logoShadow" x="-15%" y="-15%" width="130%" height="130%">
-          <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#000000" floodOpacity="0.65"/>
-        </filter>
-        <filter id="logoGlow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
+
+        <filter id="logoUltraGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3.5" result="blur1" />
+          <feGaussianBlur stdDeviation="8" result="blur2" />
           <feMerge>
-            <feMergeNode in="blur" />
+            <feMergeNode in="blur2" />
+            <feMergeNode in="blur1" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+
+        <filter id="logoShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000000" floodOpacity="0.8"/>
+        </filter>
       </defs>
 
-      <rect width="120" height="120" rx="30" fill="url(#logoBg)" />
-      <rect x="16" y="20" width="88" height="82" rx="16" fill="url(#logoGlass)" stroke="url(#logoSheen)" strokeWidth="1.5" filter="url(#logoShadow)" />
+      {/* فرم بدون لبه برای درشتی لوگو */}
+      <rect width="100" height="100" rx="22" fill="url(#logoBaseBg)" stroke="#334155" strokeWidth="2" filter="url(#logoShadow)"/>
 
-      <g stroke="#475569" strokeWidth="1.8" fill="none">
-        <circle cx="33" cy="38" r="4.5"/><circle cx="51" cy="38" r="4.5"/><circle cx="69" cy="38" r="4.5" fill="#38BDF8" stroke="#38BDF8"/><circle cx="87" cy="38" r="4.5"/>
-        <circle cx="33" cy="58" r="4.5" fill="#F43F5E" stroke="#F43F5E"/><circle cx="51" cy="58" r="4.5"/><circle cx="69" cy="58" r="4.5"/><circle cx="87" cy="58" r="4.5"/>
-        <circle cx="33" cy="78" r="4.5"/><circle cx="51" cy="78" r="4.5"/><circle cx="69" cy="78" r="4.5"/><circle cx="87" cy="78" r="4.5" fill="#10B981" stroke="#10B981"/>
+      <g filter="url(#logoShadow)">
+        <circle cx="22" cy="78" r="5" fill="#EF4444" />
+        <circle cx="41" cy="78" r="5" fill="#F59E0B" />
+        <circle cx="60" cy="78" r="5" fill="#3B82F6" />
+        <circle cx="78" cy="78" r="5" fill="#10B981" />
       </g>
 
-      <g filter="url(#logoGlow)">
-        <path d="M 26 31 Q 60 18 94 31" fill="none" stroke="url(#logoTNeon)" strokeWidth="6.5" strokeLinecap="round" />
-        <path d="M 60 25 V 78 L 81 55" fill="none" stroke="url(#logoTNeon)" strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round" />
+      <g filter="url(#logoUltraGlow)">
+        <path d="M 18 30 Q 50 15 82 30" fill="none" stroke="url(#logoNeonGradient)" strokeWidth="11" strokeLinecap="round" />
+        <path d="M 50 22 V 88 L 84 45" fill="none" stroke="url(#logoNeonGradient)" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
       </g>
+      
+      <path d="M 50 22 V 86" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" opacity="0.6"/>
     </svg>
   );
 }
