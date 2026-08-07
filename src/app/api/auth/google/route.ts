@@ -4,7 +4,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 export async function GET(request: Request) {
   const { env } = await getCloudflareContext();
   // استفاده از آیدی مستقیم در صورت خوانده نشدن از سرور
-  const clientId = (env as any).GOOGLE_CLIENT_ID || '765863500546-a8s2p2cfhtobs68o5am0fv9tt9nm1b0e.apps.googleusercontent.com';
+  const clientId = (env as any).GOOGLE_CLIENT_ID || '686114748186-7mds5gulof8vgpsqj3haf5i4fj21ve5l.apps.googleusercontent.com';
   
   const url = new URL(request.url);
   const protocol = url.hostname === 'localhost' ? 'http' : 'https';

@@ -61,6 +61,6 @@
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
   "vars": {
-    "GOOGLE_CLIENT_ID": "765863500546-a8s2p2cfhtobs68o5am0fv9tt9nm1b0e.apps.googleusercontent.com"
+    "GOOGLE_CLIENT_ID": "686114748186-7mds5gulof8vgpsqj3haf5i4fj21ve5l.apps.googleusercontent.com"
   }
 }
