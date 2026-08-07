@@ -13,17 +13,24 @@ export default function StudentDashboard() {
       if (Array.isArray(resData)) setData(resData);
       setLoading(false);
       
-      // هوشمندسازی اسکرول: اگر هشی در URL بود، ابتدا کتاب را پیدا کرده و باز می‌کند
+      // هوشمندسازی اسکرول + رفع باگ دوتا شدن هش در آدرس
       setTimeout(() => {
         const hash = window.location.hash;
-        if (hash && hash.startsWith('#sheet-')) {
-          const sheetId = hash.replace('#sheet-', '');
+        // با این ریجکس حتی اگر هش به صورت #sheet-123#sheet-123 درآمده باشد، فقط آیدی اول استخراج می‌شود
+        const match = hash.match(/#sheet-(\d+)/);
+        
+        if (match) {
+          const sheetId = match[1];
           const targetSheet = Array.isArray(resData) ? resData.find((item: any) => item.sheet_id === sheetId) : undefined;
+          
           if (targetSheet) {
             setSelectedBookId(targetSheet.book_id);
             setTimeout(() => {
               const el = document.getElementById(`sheet-${sheetId}`);
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              // تمیز کردن و یکتا کردن آدرس URL برای جلوگیری از تکرار هش
+              window.history.replaceState(null, '', `/dashboard#sheet-${sheetId}`);
             }, 300); // صبر برای رندر شدن کتاب
           }
         }
@@ -104,7 +111,6 @@ export default function StudentDashboard() {
 
                   <div className="flex gap-2">
                     <Link href={`/exam/${sheet.sheet_id}`} className="flex-1 text-center bg-blue-600 text-white p-2.5 rounded-xl font-bold hover:bg-blue-700 transition">
-                      {/* تغییر کلمه شرکت مجدد به ویرایش پاسخ‌ها */}
                       {sheet.status === 'completed' ? 'ویرایش پاسخ‌ها' : 'شروع / ادامه'}
                     </Link>
                     {sheet.status === 'completed' && (

@@ -4,23 +4,26 @@ import Link from "next/link";
 import { toFaNum } from "@/lib/utils";
 
 export default function ResultPage({ params }: { params: Promise<{ id: string }> }) {
-  // گرفتن اصولی آیدی صفحه
   const { id: sheetId } = use(params);
 
   const [versions, setVersions] = useState<any[]>([]);
   const [selectedV, setSelectedV] = useState<number>(0);
-  
-  // تغییر به false تا پیشفرض غیرفعال باشد
   const [showCorrect, setShowCorrect] = useState(false);
+  const [loading, setLoading] = useState(true); // وضعیت لودینگ اضافه شد
 
   useEffect(() => {
     if (!sheetId) return;
-    fetch(`/api/student/result?sheetId=${sheetId}`).then(res => res.json()).then((data: any) => {
-      if(Array.isArray(data)) setVersions(data);
-    });
+    fetch(`/api/student/result?sheetId=${sheetId}`)
+      .then(res => res.json())
+      .then((data: any) => {
+        if(Array.isArray(data)) setVersions(data);
+        setLoading(false); // پایان لودینگ
+      })
+      .catch(() => setLoading(false)); // پایان لودینگ در صورت بروز خطا
   }, [sheetId]);
 
-  if (!versions.length) return <div className="text-center mt-20 font-bold">در حال بارگذاری کارنامه...</div>;
+  if (loading) return <div className="text-center mt-20 font-bold text-gray-500">در حال دریافت کارنامه...</div>;
+  if (!versions.length) return <div className="text-center mt-20 font-bold text-red-500">هیچ کارنامه‌ای برای این پاسخ‌برگ یافت نشد.</div>; // رفع باگ لودینگ بی‌نهایت
 
   const result = versions[selectedV];
   const userAns = JSON.parse(result.user_answers || '{}');

@@ -77,12 +77,16 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
     setLoading(true);
     const res = await fetch("/api/student/exam", { method: "POST", body: JSON.stringify({ action: "submit", sheetId, userAnswers: answers, questionFlags: flags }) });
     const data = (await res.json()) as any;
+    
     if (data.success) {
-      // پاک کردن لوکال استوریج تا دفعه بعد مستقیما از کلود (که ویرایش شده) خوانده شود
+      // پاک کردن پاسخ‌ها و رنگ‌ها (Flags) از لوکال استوریج تا تداخلی ایجاد نشود
       localStorage.removeItem(`ans_${sheetId}`);
+      localStorage.removeItem(`flags_${sheetId}`); // <- اضافه شده برای رفع باگ Memory Leak
       router.push(`/result/${sheetId}`);
-    } else alert(data.error);
-    setLoading(false);
+    } else {
+      alert(data.error);
+      setLoading(false); // <- اضافه شده تا در صورت ارور دادن (مثل رد شدن مجاز دفعات شرکت)، دکمه‌ها قفل نمانند
+    }
   };
 
   const handleInstantCheck = async (qNum: number) => {
