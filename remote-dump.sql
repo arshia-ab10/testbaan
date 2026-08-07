@@ -63,3 +63,12 @@ INSERT INTO "user_submissions" ("id","user_id","answer_sheet_id","status","compl
 CREATE TABLE user_sheet_progress (user_id TEXT NOT NULL, answer_sheet_id TEXT NOT NULL, draft_answers TEXT, question_flags TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, answer_sheet_id));
 INSERT INTO "user_sheet_progress" ("user_id","answer_sheet_id","draft_answers","question_flags","updated_at") VALUES('4419939286','3153535490','{}','{"1":0,"2":3,"3":4,"4":5,"5":1,"6":2,"7":1,"8":1,"9":1,"10":0}','2026-08-03 19:21:18');
 INSERT INTO "user_sheet_progress" ("user_id","answer_sheet_id","draft_answers","question_flags","updated_at") VALUES('4419939286','8750034305','{}','{"11":1,"56":4,"59":0}','2026-08-03 19:27:52');
+CREATE TABLE otps (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
+    expires_at DATETIME NOT NULL
+);
+INSERT INTO "otps" ("id","email","code","expires_at") VALUES('c9c1ed56-6260-4ea2-bbc1-2bf3d699a52d','arshia.abootorabi10@gmail.com','677687','2026-08-07T19:43:05.879Z');
+INSERT INTO "otps" ("id","email","code","expires_at") VALUES('78d92bcb-2131-4a6e-bbc2-348236e84070','arshia.abootorabi10@gmail.com','592253','2026-08-07T19:43:15.886Z');
+INSERT INTO "otps" ("id","email","code","expires_at") VALUES('145a4545-f1a8-47e5-a6af-e371fbdb7deb','arshia.abootorabi10@gmail.com','831301','2026-08-07T20:26:11.876Z');

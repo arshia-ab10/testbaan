@@ -6,11 +6,23 @@ export async function POST(request: Request) {
     const body = (await request.json()) as any;
     const email = body.email;
     
-    if (!email || !email.includes('@')) return NextResponse.json({ error: 'ایمیل نامعتبر است' }, { status: 400 });
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ error: 'ایمیل نامعتبر است' }, { status: 400 });
+    }
 
-    const context = (await getCloudflareContext()) as any;
-    const env = context.env;
-    const db = env.testbaan_db;
+    // دریافت امن متغیرها
+    let env: any;
+    try {
+      const context = (await getCloudflareContext()) as any;
+      env = context?.env || process.env;
+    } catch {
+      env = process.env;
+    }
+
+    const db = env?.testbaan_db;
+    if (!db) {
+      return NextResponse.json({ error: 'دیتابیس در محیط npm run dev متصل نیست. لطفاً با npx wrangler dev --port 3000 اجرا کنید.' }, { status: 500 });
+    }
     
     // ساخت کد 6 رقمی
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -24,6 +36,10 @@ export async function POST(request: Request) {
     const clientId = env.GOOGLE_CLIENT_ID;
     const clientSecret = env.GOOGLE_CLIENT_SECRET;
     const refreshToken = env.GOOGLE_REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      return NextResponse.json({ error: 'کلیدهای گوگل در فایل .dev.vars پیدا نشدند.' }, { status: 500 });
+    }
 
     // 1. دریافت Access Token تازه از گوگل
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -40,10 +56,11 @@ export async function POST(request: Request) {
     const tokenData = (await tokenRes.json()) as any;
     
     if (!tokenData.access_token) {
-      return NextResponse.json({ error: 'خطا در ارتباط با سرور ایمیل' }, { status: 500 });
+      console.error("Google OAuth Token Error:", tokenData);
+      return NextResponse.json({ error: tokenData.error_description || 'خطا در دریافت توکن از گوگل' }, { status: 500 });
     }
 
-    // 2. ساخت قالب ایمیل
+    // 2. ساخت قالب ایمیل طبق استاندارد RFC 2822
     const subject = "کد ورود به تست‌بان";
     const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
     const messageParts = [
@@ -59,11 +76,11 @@ export async function POST(request: Request) {
       `<p style="color: #94a3b8; font-size: 12px; margin-top: 20px;">این کد تا ۵ دقیقه دیگر اعتبار دارد.</p>`,
       `</div>`
     ];
-    const emailBody = messageParts.join('\n');
+    const emailBody = messageParts.join('\r\n');
     const encodedMessage = Buffer.from(emailBody, 'utf-8').toString('base64url');
 
-    // 3. ارسال ایمیل از طریق سرور گوگل
-    const sendRes = await fetch("https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send", {
+    // 3. ارسال ایمیل از طریق سرور گوگل (اصلاح آدرس بدون /upload/)
+    const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${tokenData.access_token}`,
@@ -72,10 +89,15 @@ export async function POST(request: Request) {
       body: JSON.stringify({ raw: encodedMessage }),
     });
 
-    if (!sendRes.ok) throw new Error("ارسال ایمیل با خطا مواجه شد");
+    if (!sendRes.ok) {
+      const errorDetail = (await sendRes.json()) as any;
+      console.error("Gmail API Error:", errorDetail);
+      throw new Error(errorDetail?.error?.message || "ارسال ایمیل با خطا مواجه شد");
+    }
 
     return NextResponse.json({ success: true, message: 'کد ارسال شد' });
   } catch (error: any) {
+    console.error("OTP Route Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
