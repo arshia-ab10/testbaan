@@ -59,7 +59,7 @@ export default function GoogleIcon({ className = "w-5 h-5" }: { className?: stri
           <stop offset=".4771242" stopColor="#0aa6a9"/>
           <stop offset=".5684245" stopColor="#0d9cc6"/>
           <stop offset=".667385" stopColor="#1893dd"/>
-          <stop offset=".7687273" stop-color="#258bf1"/>
+          <stop offset=".7687273" stopColor="#258bf1"/>
           <stop offset=".8585063" stopColor="#3086ff"/>
         </linearGradient>
         <linearGradient id="e">
