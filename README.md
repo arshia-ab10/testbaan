@@ -1,47 +1,36 @@
-# OpenNext Starter
+# 📄 سامانه تست‌بان (TestBaan)
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+سامانه آنلاین مدیریت آزمون و پاسخ‌برگ الکترونیکی با زیرساخت ابری **Cloudflare Workers** و **Next.js**.
 
-## Getting Started
+## 🚀 ویژگی‌های کلیدی
+- **احراز هویت:** ورود دوگانه (Google OAuth & Passwordless Email OTP).
+- **پاسخ‌برگ هوشمند:** چیدمان ۱۰تایی ستونی استاندارد کنکوری.
+- **تایمر معکوس:** ثبت خودکار آزمون در صورت اتمام وقت.
+- **Cloud Sync:** ذخیره‌سازی لحظه‌ای پیش‌نویس پاسخ‌ها در دیتابیس ابری D1.
+- **پنل مدیریت:** مدیریت کامل آزمون‌ها، دسترسی کاربران و مشاهده زنده کارنامه‌ها.
 
-Read the documentation at https://opennext.js.org/cloudflare.
+## 🛠 راه‌اندازی محلی (Development)
 
-## Develop
+۱. نصب وابستگی‌ها:
+```bash
+npm install
+```
 
-Run the Next.js development server:
+۲. راه‌اندازی دیتابیس محلی (SQLite):
+```bash
+npx wrangler d1 execute testbaan-db --local --file=./schema.sql
+```
 
+۳. اجرای پروژه:
 ```bash
 npm run dev
-# or similar package manager command
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-## Preview
-
-Preview the application locally on the Cloudflare runtime:
-
-```bash
-npm run preview
-# or similar package manager command
-```
-
-## Deploy
-
-Deploy the application to Cloudflare:
-
+## 🌐 استقرار (Deploy)
+برای ارسال پروژه روی Cloudflare:
 ```bash
 npm run deploy
-# or similar package manager command
 ```
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🗄 ساختار دیتابیس
+این پروژه از **Cloudflare D1** استفاده می‌کند. تعاریف جداول در فایل `schema.sql` موجود است.
